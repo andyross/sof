@@ -668,6 +668,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes,
 		prev = dma_block_cfg;
 		prev->next_block = ++dma_block_cfg;
 	}
+
 	if (prev)
 		prev->next_block = dma_cfg->head_block;
 	dd->z_config = dma_cfg;
