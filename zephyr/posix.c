@@ -67,12 +67,6 @@ void mtrace_event(const char *data, uint32_t length)
         printk("=== %s()\n", __func__);
 }
 
-int dai_init(struct sof *sof)
-{
-        printk("=== %s()\n", __func__);
-        return 0;
-}
-
 int platform_context_save(struct sof *sof)
 {
         printk("=== %s()\n", __func__);
@@ -103,7 +97,6 @@ int platform_init(struct sof *sof)
         scheduler_init_ll(sof->platform_dma_domain);
 
         ipc_init(sof);
-        dai_init(sof);
 
 	return 0;
 }
