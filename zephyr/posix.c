@@ -1,6 +1,8 @@
 #include <sof/ipc/driver.h>
 #include <sof/schedule/task.h>
 #include <sof/platform.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/lib/agent.h>
 
 uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
 uint8_t posix_dspbox[MAILBOX_DSPBOX_SIZE];
@@ -62,6 +64,7 @@ int dmac_init(struct sof *sof)
 
 int dai_init(struct sof *sof)
 {
+        return 0;
 }
 
 int platform_context_save(struct sof *sof)
@@ -91,4 +94,5 @@ int platform_init(struct sof *sof)
 
 int platform_boot_complete(uint32_t boot_message)
 {
+        return 0;
 }
