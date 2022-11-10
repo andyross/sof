@@ -2,6 +2,7 @@
 #include <sof/schedule/task.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/lib/agent.h>
 
 uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
@@ -63,12 +64,6 @@ void mtrace_event(const char *data, uint32_t length)
         printk("=== %s()\n", __func__);
 }
 
-int dmac_init(struct sof *sof)
-{
-        printk("=== %s()\n", __func__);
-        return 0;
-}
-
 int dai_init(struct sof *sof)
 {
         printk("=== %s()\n", __func__);
@@ -81,22 +76,29 @@ int platform_context_save(struct sof *sof)
 	return 0;
 }
 
-void platform_clock_init(struct sof *sof)
-{
-        printk("=== %s()\n", __func__);
-}
-
 int platform_init(struct sof *sof)
 {
         printk("=== %s()\n", __func__);
 
+        // FIXME: need to initialize sof->clocks[0] (indexed by CPU,
+        // we have only one) with frequency data & callbacks that
+        // match some kind of hardware.
+
+        // FIXME: wire up runtime PM?
+
 	/* All this seems to be generic boilerplate duplicated in all
 	 * platform_init() mathods?
 	 */
-        platform_clock_init(sof);
         scheduler_init_edf();
+
+        //sof->platform_timer_domain = ???;
+	//scheduler_init_ll(sof->platform_timer_domain);
+
         sa_init(sof, CONFIG_SYSTICK_PERIOD);
-        dmac_init(sof);
+
+        //sof->platform_dma_domain = ???;
+        //scheduler_init_ll(sof->platform_dma_domain);
+
         ipc_init(sof);
         dai_init(sof);
 
