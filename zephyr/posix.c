@@ -2,10 +2,10 @@
 #include <sof/schedule/task.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/lib/agent.h>
 
-struct ll_schedule_domain *ll_timer_init(void);
 struct ll_schedule_domain *ll_dma_init(void);
 
 uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
@@ -88,7 +88,8 @@ int platform_init(struct sof *sof)
 	 */
         scheduler_init_edf();
 
-        sof->platform_timer_domain = ll_timer_init();
+        //sof->platform_timer_domain = ll_timer_init();
+        sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
 
         sa_init(sof, CONFIG_SYSTICK_PERIOD);
