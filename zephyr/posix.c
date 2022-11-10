@@ -6,6 +6,7 @@
 #include <sof/lib/agent.h>
 
 struct ll_schedule_domain *ll_timer_init(void);
+struct ll_schedule_domain *ll_dma_init(void);
 
 uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
 uint8_t posix_dspbox[MAILBOX_DSPBOX_SIZE];
@@ -98,8 +99,8 @@ int platform_init(struct sof *sof)
 
         sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
-        //sof->platform_dma_domain = ???;
-        //scheduler_init_ll(sof->platform_dma_domain);
+        sof->platform_dma_domain = ll_dma_init();
+        scheduler_init_ll(sof->platform_dma_domain);
 
         ipc_init(sof);
         dai_init(sof);
