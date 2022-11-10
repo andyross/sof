@@ -31,54 +31,65 @@ __asm__(".globl _trace_ctx_start\n"
 
 int platform_ipc_init(struct ipc *ipc)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
+        printk("=== %s()\n", __func__);
 }
 
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
+        printk("=== %s()\n", __func__);
 	return SOF_TASK_STATE_COMPLETED;
 }
 
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
 {
+        printk("=== %s()\n", __func__);
 	return NULL;
 }
 
 void mtrace_event(const char *data, uint32_t length)
 {
+        printk("=== %s()\n", __func__);
 }
 
 int dmac_init(struct sof *sof)
 {
+        printk("=== %s()\n", __func__);
         return 0;
 }
 
 int dai_init(struct sof *sof)
 {
+        printk("=== %s()\n", __func__);
         return 0;
 }
 
 int platform_context_save(struct sof *sof)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 void platform_clock_init(struct sof *sof)
 {
-	// FIXME: seems like this has to initialize sof->clocks */
+        printk("=== %s()\n", __func__);
 }
 
 int platform_init(struct sof *sof)
 {
+        printk("=== %s()\n", __func__);
+
 	/* All this seems to be generic boilerplate duplicated in all
 	 * platform_init() mathods?
 	 */
@@ -94,5 +105,6 @@ int platform_init(struct sof *sof)
 
 int platform_boot_complete(uint32_t boot_message)
 {
+        printk("=== %s()\n", __func__);
         return 0;
 }
