@@ -5,6 +5,8 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/lib/agent.h>
 
+struct ll_schedule_domain *ll_timer_init(void);
+
 uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
 uint8_t posix_dspbox[MAILBOX_DSPBOX_SIZE];
 uint8_t posix_stream[MAILBOX_STREAM_SIZE];
@@ -91,8 +93,8 @@ int platform_init(struct sof *sof)
 	 */
         scheduler_init_edf();
 
-        //sof->platform_timer_domain = ???;
-	//scheduler_init_ll(sof->platform_timer_domain);
+        sof->platform_timer_domain = ll_timer_init();
+	scheduler_init_ll(sof->platform_timer_domain);
 
         sa_init(sof, CONFIG_SYSTICK_PERIOD);
 

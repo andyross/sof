@@ -36,3 +36,7 @@ endif()
 if(CONFIG_CAVS)
 	add_subdirectory(intel)
 endif()
+
+if(CONFIG_ZEPHYR_POSIX)
+        add_subdirectory(posix)
+endif()

@@ -531,6 +531,7 @@ endif()
 # Building for native_posix-based whole-OS host emulator
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_SRC_PATH}/schedule/ll_schedule.c
+	${SOF_PLATFORM_PATH}/posix/ll_timer.c
 	posix.c
 )
 
