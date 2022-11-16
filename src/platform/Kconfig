@@ -4,6 +4,7 @@ menu "Platform"
 
 choice
 	prompt "Platform"
+	default ZEPHYR_POSIX if ARCH_POSIX
 	default APOLLOLAKE
 
 config BAYTRAIL

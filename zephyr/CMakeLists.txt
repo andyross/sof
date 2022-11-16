@@ -533,7 +533,7 @@ zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_SRC_PATH}/schedule/ll_schedule.c
 	${SOF_PLATFORM_PATH}/posix/ll_timer.c
 	${SOF_PLATFORM_PATH}/posix/ll_dma.c
-	posix.c
+	${SOF_PLATFORM_PATH}/posix/posix.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_LIBRARY
