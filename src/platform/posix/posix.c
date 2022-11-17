@@ -6,6 +6,8 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/lib/agent.h>
 
+void posix_dma_init(struct sof *sof);
+
 struct ll_schedule_domain *ll_dma_init(void);
 
 uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
@@ -73,30 +75,40 @@ int platform_context_save(struct sof *sof)
 	return 0;
 }
 
+static void posix_clk_init(struct sof *sof)
+{
+        static const struct freq_table cpu_freq[] = {
+                {
+                        .freq = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC,
+                        .ticks_per_msec = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000,
+                },
+        };
+        static struct clock_info clocks_info[] = {
+                {
+                        .freqs_num = ARRAY_SIZE(cpu_freq),
+                        .freqs = cpu_freq,
+                        .notification_id = 0,
+                        .notification_mask = 1,
+                },
+        };
+
+        sof->clocks = clocks_info;
+}
+
 int platform_init(struct sof *sof)
 {
         printk("=== %s()\n", __func__);
 
-        // FIXME: need to initialize sof->clocks[0] (indexed by CPU,
-        // we have only one) with frequency data & callbacks that
-        // match some kind of hardware.
+        posix_clk_init(sof);
 
-        // FIXME: wire up runtime PM?
-
-	/* All this seems to be generic boilerplate duplicated in all
-	 * platform_init() mathods?
-	 */
+        /* Boilerplate.  Copied from ACE platform.c.  Only DMA has any
+         * posix-specific code
+         */
         scheduler_init_edf();
-
-        //sof->platform_timer_domain = ll_timer_init();
         sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(sof->platform_timer_domain);
-
         sa_init(sof, CONFIG_SYSTICK_PERIOD);
-
-        sof->platform_dma_domain = ll_dma_init();
-        scheduler_init_ll(sof->platform_dma_domain);
-
+        posix_dma_init(sof);
         ipc_init(sof);
 
 	return 0;
