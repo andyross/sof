@@ -7,8 +7,7 @@
 #include <sof/lib/agent.h>
 
 void posix_dma_init(struct sof *sof);
-
-struct ll_schedule_domain *ll_dma_init(void);
+void posix_dai_init(struct sof *sof);
 
 uint8_t posix_hostbox[MAILBOX_HOSTBOX_SIZE];
 uint8_t posix_dspbox[MAILBOX_DSPBOX_SIZE];
@@ -34,29 +33,6 @@ __asm__(".globl _trace_ctx_start\n"
 	".globl _trace_ctx_end\n"
 	"_trace_ctx_end:\n");
 
-
-int platform_ipc_init(struct ipc *ipc)
-{
-        printk("=== %s()\n", __func__);
-	return 0;
-}
-
-int ipc_platform_send_msg(const struct ipc_msg *msg)
-{
-        printk("=== %s()\n", __func__);
-	return 0;
-}
-
-void ipc_platform_complete_cmd(struct ipc *ipc)
-{
-        printk("=== %s()\n", __func__);
-}
-
-enum task_state ipc_platform_do_cmd(struct ipc *ipc)
-{
-        printk("=== %s()\n", __func__);
-	return SOF_TASK_STATE_COMPLETED;
-}
 
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
 {

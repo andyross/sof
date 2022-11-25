@@ -532,6 +532,7 @@ endif()
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_SRC_PATH}/schedule/zephyr_ll.c
 	${SOF_PLATFORM_PATH}/posix/dma.c
+	${SOF_PLATFORM_PATH}/posix/ipc.c
 	${SOF_PLATFORM_PATH}/posix/posix.c
 )
 
