@@ -20,8 +20,13 @@ static void posix_ipc_isr(void *arg)
 	ipc_schedule_process(global_ipc);
 }
 
+// External symbols set up by the fuzzing layer
 extern uint8_t *posix_fuzz_buf, posix_fuzz_sz;
 
+// Lots of space.  Should really synchronize with the -max_len
+// parameter to libFuzzer (defaults to 4096), but that requires
+// thinking/experimentation about how much fuzzing we want to do at a
+// time...
 static uint8_t fuzz_in[65536];
 static uint8_t fuzz_in_sz;
 
@@ -37,18 +42,28 @@ static uint8_t fuzz_in_sz;
 // CONFIG_ARCH_POSIX_FUZZ_TICKS)
 static void fuzz_isr(const void *arg)
 {
-	if (fuzz_in_sz == 0) {
+	size_t rem, i, n = MIN(posix_fuzz_sz, sizeof(fuzz_in) - fuzz_in_sz);
+
+	for (i = 0; i < n; i++) {
+		fuzz_in[fuzz_in_sz++] = posix_fuzz_buf[i];
+	}
+
+	if (posix_fuzz_sz == 0) {
 		// The fuzzer does indeed present empty input buffers,
 		// I guess to test the rig?  We pass!
 		return;
 	}
 
+	if (global_ipc->comp_data == NULL) {
+		return;
+	}
+
 	memset(global_ipc->comp_data, 0, SOF_IPC_MSG_MAX_SIZE);
 
-	size_t n = MIN(fuzz_in_sz, SOF_IPC_MSG_MAX_SIZE);
-	size_t rem = fuzz_in_sz - n;
+	n = MIN(fuzz_in_sz, SOF_IPC_MSG_MAX_SIZE);
+	rem = fuzz_in_sz - n;
 
-	for (int i = 0; i < n; i++) {
+	for (i = 0; i < n; i++) {
 		uint8_t *cmd = global_ipc->comp_data; // why is it a void*?
 
 		cmd[i] = fuzz_in[i];
@@ -68,7 +83,6 @@ static void fuzz_isr(const void *arg)
 // noop).
 enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 {
-        printk("=== %s()\n", __func__);
 	struct ipc_cmd_hdr *hdr;
 
 	hdr = mailbox_validate();
@@ -78,7 +92,6 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
-        printk("=== %s()\n", __func__);
 	// This API signals the host side that processing for an IPC
 	// command is complete.  It's a noop here.
 }
@@ -98,6 +111,7 @@ int platform_ipc_init(struct ipc *ipc)
 	IRQ_CONNECT(CONFIG_ARCH_POSIX_FUZZ_IRQ, 0, fuzz_isr, NULL, 0);
 	irq_enable(CONFIG_ARCH_POSIX_FUZZ_IRQ);
 
+	global_ipc = ipc;
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(ipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
