@@ -1,7 +1,7 @@
 #include <zephyr/drivers/dma.h>
 #include <sof/lib/dma.h>
 
-/* Zephyr DMA device */
+/* Zephyr "DMA" stub device */
 
 #define NUM_CHANS 2
 

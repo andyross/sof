@@ -1,3 +1,5 @@
+#include <sof/lib/dai-legacy.h>
+
 #define NUM_DAI_TYPES 12
 #define DAIS_PER_TYPE 2
 
@@ -6,6 +8,7 @@ uint8_t useless_sum;
 static int pdai_set_config(struct dai *dai, struct ipc_config_dai *config,
 			   const void *spec_config)
 {
+        printk("=== %s()\n", __func__);
 	for (int i = 0; config && i < sizeof(*config); i++) {
 		useless_sum += ((uint8_t *)config)[i];
 	}
@@ -14,12 +17,14 @@ static int pdai_set_config(struct dai *dai, struct ipc_config_dai *config,
 
 static int pdai_trigger(struct dai *dai, int cmd, int direction)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 static int pdai_get_hw_params(struct dai *dai,
 			      struct sof_ipc_stream_params *params, int dir)
 {
+        printk("=== %s()\n", __func__);
 	// FIXME: this is a polymorphic struct with extra
 	// type-specific data at the end, may need to do this more
 	// intelligently.
@@ -29,6 +34,7 @@ static int pdai_get_hw_params(struct dai *dai,
 
 static int pdai_hw_params(struct dai *dai, struct sof_ipc_stream_params *params)
 {
+        printk("=== %s()\n", __func__);
 	for (int i = 0; params && i < sizeof(*params); i++) {
 		useless_sum += ((uint8_t *)params)[i];
 	}
@@ -37,36 +43,43 @@ static int pdai_hw_params(struct dai *dai, struct sof_ipc_stream_params *params)
 
 static int pdai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 static int pdai_get_fifo(struct dai *dai, int direction, int stream_id)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 static int pdai_probe(struct dai *dai)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 static int pdai_remove(struct dai *dai)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 static uint32_t pdai_get_init_delay_ms(struct dai *dai)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 static int pdai_get_fifo_depth(struct dai *dai, int direction)
 {
+        printk("=== %s()\n", __func__);
 	return 0;
 }
 
 static void pdai_copy(struct dai *dai)
 {
+        printk("=== %s()\n", __func__);
 }
 
 const struct dai_ops posix_dai_ops = {
@@ -94,7 +107,8 @@ static const struct dai_info posix_dai_info = {
 
 void posix_dai_init(struct sof *sof)
 {
-	for (int type = 0; t < ARRAY_SIZE(dai_types); type++) {
+        printk("=== %s()\n", __func__);
+	for (int type = 0; type < ARRAY_SIZE(dai_types); type++) {
 		dai_types[type].type = type;
 		dai_types[type].dai_array = &dais[type][0];
 		dai_types[type].num_dais = DAIS_PER_TYPE;
@@ -108,10 +122,10 @@ void posix_dai_init(struct sof *sof)
 		//dai_drivers[type].ts_ops = ???;
 
 		for (int i = 0; i < DAIS_PER_TYPE; i++) {
-			dais[type][j].index = i;
-			dais[type][j].drv = &dai_drivers[type];
+			dais[type][i].index = i;
+			dais[type][i].drv = &dai_drivers[type];
 		}
 	}
 
-	sof->dai_info = &posix_dais;
+	sof->dai_info = &posix_dai_info;
 }

@@ -86,6 +86,7 @@ int platform_init(struct sof *sof)
         sa_init(sof, CONFIG_SYSTICK_PERIOD);
         posix_dma_init(sof);
         ipc_init(sof);
+        posix_dai_init(sof);
 
 	return 0;
 }
