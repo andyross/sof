@@ -21,8 +21,9 @@
 #include <sof/schedule/ll_schedule_domain.h>
 #include <rtos/wait.h>
 
-#define RIMAGE_MANIFEST (defined(__ZEPHYR__) && \
-	(defined(CONFIG_SOC_SERIES_INTEL_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)))
+#if defined(CONFIG_SOC_SERIES_INTEL_ACE) || defined(CONFIG_INTEL_ADSP_CAVS)
+#define RIMAGE_MANIFEST 1
+#endif
 
 #if RIMAGE_MANIFEST
 #include <adsp_memory.h>
@@ -694,7 +695,7 @@ const struct comp_driver *ipc4_get_comp_drv(int module_id)
 	struct sof_man_module *mod;
 	int entry_index;
 
-#if RIMAGE_MANIFEST
+#ifdef RIMAGE_MANIFEST
 	desc = (struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
 #else
 	/* Non-rimage platforms have no component facility yet.  This
