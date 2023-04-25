@@ -69,6 +69,7 @@ static void fuzz_isr(const void *arg)
 	memmove(&fuzz_in[0], &fuzz_in[n + 1], rem);
 	fuzz_in_sz = rem;
 
+#ifndef CONFIG_IPC_MAJOR_4
 	// One special case: a first byte of 0xff (which is in the
 	// otherwise-ignored size value at the front of the command --
 	// we rewrite those) is interpreted as a "component new"
@@ -129,6 +130,7 @@ static void fuzz_isr(const void *arg)
 		struct comp_driver_info *di = drvs[comp_idx % ndrvs];
 		memcpy(cmd->ext.uuid, di->drv->uid, sizeof(cmd->ext.uuid));
 	}
+#endif
 
 	posix_ipc_isr(NULL);
 }
@@ -168,6 +170,13 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
+	// IPC4 will send zero-length messages with a null buffer
+	// pointer, which otherwise gets detected as an error by
+	// memcpy_s underneath mailbox_dspbox_write()
+	if (IS_ENABLED(CONFIG_IPC_MAJOR_4) && msg->tx_size == 0) {
+		return 0;
+	}
+
 	// There is no host, just write to the mailbox to validate the buffer
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	return 0;
@@ -185,10 +194,6 @@ int platform_ipc_init(struct ipc *ipc)
 	return 0;
 }
 
-/* Quirky handling of 8 byte messages due to the Intel IPC mechanism
- * that has two out-of-band words on the controller hardware that
- * avoid the need for shared memory.
- */
 int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
 {
 	uint32_t *chdr = (uint32_t *)hdr;
@@ -198,6 +203,5 @@ int ipc_platform_compact_read_msg(struct ipc_cmd_hdr *hdr, int words)
 
 	chdr[0] = ((uint32_t *)posix_hostbox)[0];
 	chdr[1] = ((uint32_t *)posix_hostbox)[1];
-
-	return 2; /* number of words read */
+	return 2;
 }
