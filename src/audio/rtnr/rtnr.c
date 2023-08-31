@@ -843,7 +843,6 @@ static int rtnr_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct comp_buffer *sink_c;
 	int ret;
 
 	comp_dbg(dev, "rtnr_prepare()");
