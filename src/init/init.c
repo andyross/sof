@@ -1,3 +1,4 @@
+#include <mtprintf.h>
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // Copyright(c) 2016 Intel Corporation. All rights reserved.
@@ -314,6 +315,9 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 #ifndef __ZEPHYR__
 int main(int argc, char *argv[])
 {
+	MTPRINTF_LEN = 0;
+	mtprintf("Hello, SOF world!\n");
+
 	int err = 0;
 
 	trace_point(TRACE_BOOT_START);
