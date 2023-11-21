@@ -262,7 +262,7 @@ static struct comp_dev *rtnr_new(const struct comp_driver *drv,
 	}
 
 	/* Get initial configuration from topology */
-	ret = rtnr_set_config_bytes(dev, (void *)ipc_rtnr->data, ipc_rtnr->size);
+	ret = rtnr_set_config_bytes(dev, ipc_rtnr->data, ipc_rtnr->size);
 	if (ret < 0) {
 		comp_cl_err(&comp_rtnr, "rtnr_new(): failed setting initial config");
 		goto cd_fail;
@@ -840,7 +840,6 @@ static int rtnr_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
-	struct comp_buffer *sink_c;
 	int ret;
 
 	comp_dbg(dev, "rtnr_prepare()");
