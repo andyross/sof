@@ -191,6 +191,24 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 	buffer_attach(buffer, comp_list, dir);
 	buffer_set_comp(buffer, comp, dir);
 
+	/* Cross-pipeline connections are allowed by SOF topologies
+	 * and required by some applications, but fragile as the
+	 * pipeline state needs to be managed separately, generally by
+	 * userspace code outside the control of firmware or the
+	 * kernel driver.  Not all applications want both pipelines
+	 * operating in tandem, so in general there's no way to
+	 * guarantee that these buffers won't over/underrun.
+	 */
+	if (buffer->pipeline_id != comp->ipc_config.pipeline_id) {
+		comp_info(comp, "Cross-pipeline comp %d.%d <-> buf %d.%d, setting xrun-OK",
+			  comp->ipc_config.pipeline_id, comp->ipc_config.id,
+			  buffer->pipeline_id, buffer->id);
+		if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)
+			audio_stream_set_overrun(&buffer->stream, true);
+		else
+			audio_stream_set_underrun(&buffer->stream, true);
+	}
+
 	irq_local_enable(flags);
 
 	return 0;
