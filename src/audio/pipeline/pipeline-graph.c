@@ -359,7 +359,7 @@ static int pipeline_comp_reset(struct comp_dev *current,
 	/* Propagate reset across pipelines only in the same direction
 	 * and with the same scheduling behavior
 	 */
-	if (!is_single_ppl && !is_same_sched && !comp_same_dir(current, dir))
+	if (!is_single_ppl && !(is_same_sched && comp_same_dir(current, dir)))
 		return 0;
 
 	/* two cases for a component still being active here:
