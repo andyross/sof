@@ -229,21 +229,21 @@ do
 			PLATFORM="renoir"
 			XTENSA_CORE="ACP_3_1_001_PROD_2019_1"
 			HOST="xtensa-rn-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			XTENSA_TOOLS_VERSION="RI-2021.6-linux"
 			;;
 		rmb)
 			PLATFORM="rembrandt"
 			ARCH="xtensa"
 			XTENSA_CORE="LX7_HiFi5_PROD"
 			HOST="xtensa-rmb-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			XTENSA_TOOLS_VERSION="RI-2021.6-linux"
 			;;
 		vangogh)
 			PLATFORM="vangogh"
 			ARCH="xtensa"
 			XTENSA_CORE="ACP_5_0_001_PROD"
 			HOST="xtensa-vangogh-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			XTENSA_TOOLS_VERSION="RI-2021.6-linux"
 			;;
 		acp_6_3)
 			PLATFORM="acp_6_3"
@@ -268,7 +268,7 @@ do
 			PLATFORM="mt8195"
 			XTENSA_CORE="hifi4_8195_PROD"
 			HOST="xtensa-mt8195-elf"
-			XTENSA_TOOLS_VERSION="RI-2019.1-linux"
+			XTENSA_TOOLS_VERSION="RI-2021.6-linux"
 			;;
 
 	esac

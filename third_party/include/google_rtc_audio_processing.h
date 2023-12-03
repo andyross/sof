@@ -24,7 +24,7 @@ typedef struct GoogleRtcAudioProcessingState GoogleRtcAudioProcessingState;
 // Attaches `buffer` to use for memory allocations. The ownership of `buffer`
 // remains within the caller.
 void GoogleRtcAudioProcessingAttachMemoryBuffer(uint8_t *const buffer,
-						int buffer_size);
+                                                int buffer_size);
 
 // Detaches any attached memory buffer used for memory allocations. Returns 0 if
 // success and non zero if failure.
@@ -103,4 +103,4 @@ int GoogleRtcAudioProcessingAnalyzeRender_int16(
 }
 #endif
 
-#endif	// GOOGLE_RTC_AUDIO_PROCESSING_H
+#endif  // GOOGLE_RTC_AUDIO_PROCESSING_H

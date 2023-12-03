@@ -19,15 +19,15 @@ extern "C" {
 // outputs parameters based on the content. Any previous content in the output
 // parameters is overwritten regardless of the content in `message`.
 void GoogleRtcAudioProcessingParseSofConfigMessage(
-    uint8_t *message, size_t message_size,
-    uint8_t **google_rtc_audio_processing_config,
-    size_t *google_rtc_audio_processing_config_size,
-    int *num_capture_input_channels, int *num_capture_output_channels,
-    float *aec_reference_delay, float *mic_gain,
-    bool *google_rtc_audio_processing_config_present,
-    bool *num_capture_input_channels_present,
-    bool *num_capture_output_channels_present,
-    bool *aec_reference_delay_present, bool *mic_gain_present);
+    uint8_t* message, size_t message_size,
+    uint8_t** google_rtc_audio_processing_config,
+    size_t* google_rtc_audio_processing_config_size,
+    int* num_capture_input_channels, int* num_capture_output_channels,
+    float* aec_reference_delay, float* mic_gain,
+    bool* google_rtc_audio_processing_config_present,
+    bool* num_capture_input_channels_present,
+    bool* num_capture_output_channels_present,
+    bool* aec_reference_delay_present, bool* mic_gain_present);
 
 #ifdef __cplusplus
 }
