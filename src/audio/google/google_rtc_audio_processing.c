@@ -1,3 +1,4 @@
+#include <mtprintf.h>
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // Copyright(c) 2021 Google LLC.
@@ -636,10 +637,78 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 static int google_rtc_audio_processing_reset(struct processing_module *mod)
 {
 	comp_dbg(mod->dev, "google_rtc_audio_processing_reset()");
-
 	return 0;
 }
 
+/* FunctionMostlyExistsToKeepLineLengthsUnderControl */
+static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
+{
+	/* FIXME: sample/frame format is platform dependent, these are
+	 * hard-configured format APIs and need indirection.  Note
+	 * that the calling code in process() is format-independent.
+	 */
+	GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
+						    cd->aec_reference_buffer);
+	GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
+						     cd->raw_mic_buffer,
+						     cd->output_buffer);
+	cd->raw_mic_buffer_frame_index = 0;
+}
+
+#if 1
+static int google_rtc_audio_processing_process(struct processing_module *mod,
+					       struct input_stream_buffer *input_buffers,
+					       int num_input_buffers,
+					       struct output_stream_buffer *output_buffers,
+					       int num_output_buffers)
+{
+	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
+
+	if (cd->reconfigure)
+		google_rtc_audio_processing_reconfigure(mod);
+
+	struct audio_stream *mic = input_buffers[cd->raw_microphone_source].data;
+	struct audio_stream *ref = input_buffers[cd->aec_reference_source].data;
+	struct audio_stream *out = output_buffers[0].data;
+
+	int micchan = audio_stream_get_channels(mic);
+	int refchan = audio_stream_get_channels(ref);
+
+	int fmic = audio_stream_get_avail_frames(mic);
+	int fref = audio_stream_get_avail_frames(ref);
+	int frames = MIN(fmic, fref);
+	int n, frames_rem;
+
+	// FIXME: if fref > fmic (common at pipeline startup if
+	// playback was already active), we should consume the early
+	// samples so AEC compares the most recent values.
+
+	for (frames_rem = frames; frames_rem; frames_rem -= n) {
+		n = MIN(frames, cd->num_frames - cd->raw_mic_buffer_frame_index);
+
+		audio_stream_copy_to_linear(mic, 0, cd->raw_mic_buffer,
+					    cd->raw_mic_buffer_frame_index,
+					    n * micchan);
+		audio_stream_copy_to_linear(ref, 0, cd->aec_reference_buffer,
+					    cd->aec_reference_frame_index,
+					    n * refchan);
+		cd->raw_mic_buffer_frame_index += n;
+
+		if (cd->raw_mic_buffer_frame_index >= cd->num_frames) {
+			execute_aec(cd);
+			audio_stream_copy_from_linear(cd->output_buffer, 0, out, 0,
+						      n * cd->num_capture_channels);
+		}
+	}
+
+	size_t refbytes = frames * audio_stream_frame_bytes(ref);
+
+	input_buffers[cd->aec_reference_source].consumed = refbytes;
+	module_update_buffer_position(&input_buffers[cd->raw_microphone_source],
+				      &output_buffers[0], frames);
+	return 0;
+}
+#else
 static int google_rtc_audio_processing_process(struct processing_module *mod,
 					       struct input_stream_buffer *input_buffers,
 					       int num_input_buffers,
@@ -750,6 +819,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 
 	return 0;
 }
+#endif
 
 static struct module_interface google_rtc_audio_processing_interface = {
 	.init  = google_rtc_audio_processing_init,
