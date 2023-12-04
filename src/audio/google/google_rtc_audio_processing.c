@@ -634,6 +634,50 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	return 0;
 }
 
+/* Extracts connected buffer pointers.  Clumsy, should cache in comp_data */
+static void find_bufs(struct processing_module *mod, struct comp_buffer **mic,
+		      struct comp_buffer **ref, struct comp_buffer **out)
+{
+	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
+	struct list_item *li;
+	int i = 0;
+
+	list_for_item(li, &mod->dev->bsource_list) {
+		struct comp_buffer *b = container_of(li, struct comp_buffer,
+						     sink_list);
+		if (i == cd->raw_microphone_source)
+			*mic = b;
+		else if (i == cd->aec_reference_source)
+			*ref = b;
+		i++;
+	}
+
+	*out = list_first_item(&mod->dev->bsink_list,
+			       struct comp_buffer, source_list);
+}
+
+static int trigger_handler(struct processing_module *mod, int cmd)
+{
+	struct comp_buffer *mic, *ref, *out;
+
+	find_bufs(mod, &mic, &ref, &out);
+
+	/* Ignore and halt propagation if we get a trigger from the
+	 * playback pipeline: not for us.
+	 */
+	if (ref->walking)
+		return PPL_STATUS_PATH_STOP;
+
+	/* Note: not module_adapter_set_state().  With IPC4 those are
+	 * identical, but IPC3 has some odd-looking logic that
+	 * validates that no sources are active when receiving a
+	 * PRE_START command, which obviously breaks for our reference
+	 * stream if playback was already running when our pipeline
+	 * started
+	 */
+	return comp_set_state(mod->dev, cmd);
+}
+
 static int google_rtc_audio_processing_reset(struct processing_module *mod)
 {
 	comp_dbg(mod->dev, "google_rtc_audio_processing_reset()");
@@ -711,6 +755,7 @@ static struct module_interface google_rtc_audio_processing_interface = {
 	.prepare = google_rtc_audio_processing_prepare,
 	.set_configuration = google_rtc_audio_processing_set_config,
 	.get_configuration = google_rtc_audio_processing_get_config,
+	.trigger = trigger_handler,
 	.reset = google_rtc_audio_processing_reset,
 };
 
