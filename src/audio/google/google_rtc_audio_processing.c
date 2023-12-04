@@ -714,13 +714,32 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	struct audio_stream *ref = input_buffers[cd->aec_reference_source].data;
 	struct audio_stream *out = output_buffers[0].data;
 
+	struct comp_buffer *refbuf = container_of(ref, struct comp_buffer, stream);
+	bool ref_ok = refbuf->source->state == COMP_STATE_ACTIVE;
+
+	/* Would be cleaner to store a bit of state to elide a bzero
+	 * we already did, but we'd be doing the copy of real data in
+	 * the ref_ok state anyway.
+	 */
+	if (!ref_ok)
+		bzero(cd->aec_reference_buffer,
+		      (cd->num_frames * cd->num_aec_reference_channels
+		       * sizeof(cd->aec_reference_buffer[0])));
+
 	int micchan = audio_stream_get_channels(mic);
 	int refchan = audio_stream_get_channels(ref);
 
 	int fmic = audio_stream_get_avail_frames(mic);
 	int fref = audio_stream_get_avail_frames(ref);
-	int frames = MIN(fmic, fref);
+	int frames = ref_ok ? MIN(fmic, fref) : fmic;
 	int n, frames_rem;
+
+	/* If fref > fmic (common at pipeline startup if
+	 * playback was already active), we should consume the early
+	 * samples so AEC compares the most recent values.
+	 */
+	if (ref_ok && fref > fmic)
+		audio_stream_consume(ref, (fref - fmic) * audio_stream_frame_bytes(ref));
 
 	for (frames_rem = frames; frames_rem; frames_rem -= n) {
 		n = MIN(frames, cd->num_frames - cd->raw_mic_buffer_frame_index);
@@ -728,9 +747,12 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 		audio_stream_copy_to_linear(mic, 0, cd->raw_mic_buffer,
 					    cd->raw_mic_buffer_frame_index,
 					    n * micchan);
-		audio_stream_copy_to_linear(ref, 0, cd->aec_reference_buffer,
-					    cd->aec_reference_frame_index,
-					    n * refchan);
+
+		if (ref_ok)
+			audio_stream_copy_to_linear(ref, 0, cd->aec_reference_buffer,
+						    cd->aec_reference_frame_index,
+						    n * refchan);
+
 		cd->raw_mic_buffer_frame_index += n;
 
 		if (cd->raw_mic_buffer_frame_index >= cd->num_frames) {
