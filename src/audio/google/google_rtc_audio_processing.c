@@ -92,6 +92,7 @@ struct google_rtc_audio_processing_comp_data {
 	bool reconfigure;
 	int aec_reference_source;
 	int raw_microphone_source;
+	struct comp_buffer *ref_comp_buffer;
 };
 
 void *GoogleRtcMalloc(size_t size)
@@ -551,6 +552,7 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 		if (source->source->pipeline->pipeline_id != dev->pipeline->pipeline_id) {
 #endif
 			cd->aec_reference_source = i;
+			cd->ref_comp_buffer = source;
 			aec_channels = audio_stream_get_channels(&source->stream);
 			comp_dbg(dev, "reference index = %d, channels = %d", i, aec_channels);
 		} else {
@@ -618,38 +620,14 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	return 0;
 }
 
-/* Extracts connected buffer pointers.  Clumsy, should cache in comp_data */
-static void find_bufs(struct processing_module *mod, struct comp_buffer **mic,
-		      struct comp_buffer **ref, struct comp_buffer **out)
-{
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	struct list_item *li;
-	int i = 0;
-
-	list_for_item(li, &mod->dev->bsource_list) {
-		struct comp_buffer *b = container_of(li, struct comp_buffer,
-						     sink_list);
-		if (i == cd->raw_microphone_source)
-			*mic = b;
-		else if (i == cd->aec_reference_source)
-			*ref = b;
-		i++;
-	}
-
-	*out = list_first_item(&mod->dev->bsink_list,
-			       struct comp_buffer, source_list);
-}
-
 static int trigger_handler(struct processing_module *mod, int cmd)
 {
-	struct comp_buffer *mic, *ref, *out;
-
-	find_bufs(mod, &mic, &ref, &out);
+	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
 	/* Ignore and halt propagation if we get a trigger from the
 	 * playback pipeline: not for us.
 	 */
-	if (ref->walking)
+	if (cd->ref_comp_buffer->walking)
 		return PPL_STATUS_PATH_STOP;
 
 	/* Note: not module_adapter_set_state().  With IPC4 those are
@@ -701,8 +679,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	struct audio_stream *ref = input_buffers[cd->aec_reference_source].data;
 	struct audio_stream *out = output_buffers[0].data;
 
-	struct comp_buffer *refbuf = container_of(ref, struct comp_buffer, stream);
-	bool ref_ok = refbuf->source->state == COMP_STATE_ACTIVE;
+	bool ref_ok = cd->ref_comp_buffer->source->state == COMP_STATE_ACTIVE;
 
 	/* Would be cleaner to store a bit of state to elide a bzero
 	 * we already did, but we'd be doing the copy of real data in
