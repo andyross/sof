@@ -664,20 +664,63 @@ static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
 	cd->raw_mic_buffer_frame_index = 0;
 }
 
-static int google_rtc_audio_processing_process(struct processing_module *mod,
-					       struct input_stream_buffer *input_buffers,
-					       int num_input_buffers,
-					       struct output_stream_buffer *output_buffers,
-					       int num_output_buffers)
+static void source_copy(struct sof_source *src, int frames, int16_t *dst)
+{
+	size_t chan = source_get_channels(src);
+	size_t samples = frames * chan;
+	size_t bytes = samples * sizeof(int16_t);
+	const int16_t *buf, *bufstart, *bufend;
+	int i, c, err;
+	size_t bufsz;
+
+	err = source_get_data(src, bytes, (void *)&buf, (void *)&bufstart, &bufsz);
+	assert(err == 0);
+	bufend = &bufstart[bufsz];
+
+	for (i = 0; i < frames; i++) {
+		for  (c = 0; c < chan; c++) {
+			*dst++ = *buf++;
+			if (buf >= bufend)
+				buf = bufstart;
+		}
+	}
+	source_release_data(src, bytes);
+}
+
+static void sink_copy(struct sof_sink *sink, int frames, int16_t *src)
+{
+	size_t chan = sink_get_channels(sink);
+	size_t samples = frames * chan;
+	size_t bytes = samples * sizeof(int16_t);
+	int16_t *buf, *bufstart, *bufend;
+	int i, c, err;
+	size_t bufsz;
+
+	err = sink_get_buffer(sink, bytes, (void *)&buf, (void *)&bufstart, &bufsz);
+	assert(err == 0);
+	bufend = &bufstart[bufsz];
+
+	for (i = 0; i < frames; i++) {
+		for  (c = 0; c < chan; c++) {
+			*buf++ = *src++;
+			if (buf >= bufend)
+				buf = bufstart;
+		}
+	}
+	sink_commit_buffer(sink, bytes);
+}
+
+static int mod_process(struct processing_module *mod, struct sof_source **sources,
+		       int num_of_sources, struct sof_sink **sinks, int num_of_sinks)
 {
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
 
 	if (cd->reconfigure)
 		google_rtc_audio_processing_reconfigure(mod);
 
-	struct audio_stream *mic = input_buffers[cd->raw_microphone_source].data;
-	struct audio_stream *ref = input_buffers[cd->aec_reference_source].data;
-	struct audio_stream *out = output_buffers[0].data;
+	struct sof_source *mic = sources[cd->raw_microphone_source];
+	struct sof_source *ref = sources[cd->aec_reference_source];
+	struct sof_sink *out = sinks[0];
 
 	bool ref_ok = cd->ref_comp_buffer->source->state == COMP_STATE_ACTIVE;
 
@@ -688,11 +731,8 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	if (!ref_ok)
 		bzero(refoutbuf, sizeof(refoutbuf));
 
-	int micchan = audio_stream_get_channels(mic);
-	int refchan = audio_stream_get_channels(ref);
-
-	int fmic = audio_stream_get_avail_frames(mic);
-	int fref = audio_stream_get_avail_frames(ref);
+	int fmic = source_get_data_frames_available(mic);
+	int fref = source_get_data_frames_available(ref);
 	int frames = ref_ok ? MIN(fmic, fref) : fmic;
 	int n, frames_rem;
 
@@ -701,41 +741,34 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	 * samples so AEC compares the most recent values.
 	 */
 	if (ref_ok && fref > fmic)
-		audio_stream_consume(ref, (fref - fmic) * audio_stream_frame_bytes(ref));
+		source_release_data(ref, (fref - fmic) * source_get_frame_bytes(ref));
 
 	for (frames_rem = frames; frames_rem; frames_rem -= n) {
 		n = MIN(frames, cd->num_frames - cd->raw_mic_buffer_frame_index);
 
-		audio_stream_copy_to_linear(mic, 0, cd->raw_mic_buffer,
-					    cd->raw_mic_buffer_frame_index,
-					    n * micchan);
+		/* sample indices */
+		int smic = cd->raw_mic_buffer_frame_index * source_get_channels(mic);
+		int sref = cd->aec_reference_frame_index * source_get_channels(ref);
+
+		source_copy(mic, n, &cd->raw_mic_buffer[smic]);
 
 		if (ref_ok)
-			audio_stream_copy_to_linear(ref, 0, cd->refout_buffer,
-						    cd->aec_reference_frame_index,
-						    n * refchan);
+			source_copy(ref, n, &cd->refout_buffer[sref]);
 
 		cd->raw_mic_buffer_frame_index += n;
 
 		if (cd->raw_mic_buffer_frame_index >= cd->num_frames) {
 			execute_aec(cd);
-			audio_stream_copy_from_linear(cd->refout_buffer, 0, out, 0,
-						      n * cd->num_capture_channels);
+			sink_copy(out, n, cd->refout_buffer);
 		}
 	}
-
-	size_t refbytes = frames * audio_stream_frame_bytes(ref);
-
-	input_buffers[cd->aec_reference_source].consumed = refbytes;
-	module_update_buffer_position(&input_buffers[cd->raw_microphone_source],
-				      &output_buffers[0], frames);
 	return 0;
 }
 
 static struct module_interface google_rtc_audio_processing_interface = {
 	.init  = google_rtc_audio_processing_init,
 	.free = google_rtc_audio_processing_free,
-	.process_audio_stream = google_rtc_audio_processing_process,
+	.process = mod_process,
 	.prepare = google_rtc_audio_processing_prepare,
 	.set_configuration = google_rtc_audio_processing_set_config,
 	.get_configuration = google_rtc_audio_processing_get_config,
