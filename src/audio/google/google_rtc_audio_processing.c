@@ -70,10 +70,10 @@ uint8_t aec_mem_blob[CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_
 #define REFOUT_CHAN MAX(REF_CHAN_MAX, MIC_CHAN_MAX)
 
 static __aligned(PLATFORM_DCACHE_ALIGN)
-int16_t refoutbuf[sizeof(uint16_t) * NUM_FRAMES * REF_CHAN_MAX];
+float refoutbuf[REFOUT_CHAN][NUM_FRAMES];
 
 static __aligned(PLATFORM_DCACHE_ALIGN)
-int16_t micbuf[sizeof(uint16_t) * NUM_FRAMES * REFOUT_CHAN];
+float micbuf[MIC_CHAN_MAX][NUM_FRAMES];
 
 struct google_rtc_audio_processing_comp_data {
 #if CONFIG_IPC_MAJOR_4
@@ -84,9 +84,9 @@ struct google_rtc_audio_processing_comp_data {
 	int num_capture_channels;
 	GoogleRtcAudioProcessingState *state;
 	int aec_reference_frame_index;
-	int16_t *raw_mic_buffer;
+	float *raw_mic_buffers[MIC_CHAN_MAX];
 	int raw_mic_buffer_frame_index;
-	int16_t *refout_buffer;
+	float *refout_buffers[REFOUT_CHAN];
 	int output_buffer_frame_index;
 	struct comp_data_blob_handler *tuning_handler;
 	bool reconfigure;
@@ -94,6 +94,37 @@ struct google_rtc_audio_processing_comp_data {
 	int raw_microphone_source;
 	struct comp_buffer *ref_comp_buffer;
 };
+
+#if CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MIC_BITS == 16
+typedef int16_t mic_sample_t;
+#define MIC_SCALE ((float)SHRT_MAX)
+#else
+typedef int32_t mic_sample_t;
+#define MIC_SCALE ((float)INT_MAX)
+#endif
+
+#if CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_REF_BITS == 16
+typedef int16_t ref_sample_t;
+#define REF_SCALE ((float)SHRT_MAX)
+#else
+typedef int32_t ref_sample_t;
+#define REF_SCALE ((float)INT_MAX)
+#endif
+
+static inline float mic_to_float(mic_sample_t x)
+{
+	return (1.0f / MIC_SCALE) * (float)x;
+}
+
+static inline mic_sample_t float_to_mic(float x)
+{
+	return (mic_sample_t)(MIC_SCALE * x);
+}
+
+static inline float ref_to_float(ref_sample_t x)
+{
+	return (1.0f / REF_SCALE) * (float)x;
+}
 
 void *GoogleRtcMalloc(size_t size)
 {
@@ -398,7 +429,7 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	struct module_data *md = &mod->priv;
 	struct comp_dev *dev = mod->dev;
 	struct google_rtc_audio_processing_comp_data *cd;
-	int ret;
+	int ret, i;
 
 	comp_info(dev, "google_rtc_audio_processing_init()");
 
@@ -466,13 +497,10 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 		goto fail;
 	}
 
-	cd->raw_mic_buffer = &micbuf[0];
-	cd->refout_buffer = &refoutbuf[0];
-
-#ifdef __ZEPHYR__
-	cd->raw_mic_buffer = arch_xtensa_cached_ptr(cd->raw_mic_buffer);
-	cd->refout_buffer = &refoutbuf[0];
-#endif
+	for (i = 0; i < MIC_CHAN_MAX; i++)
+		cd->raw_mic_buffers[i] = arch_xtensa_cached_ptr(&micbuf[i][0]);
+	for (i = 0; i < REFOUT_CHAN; i++)
+		cd->refout_buffers[i] = arch_xtensa_cached_ptr(&refoutbuf[i][0]);
 
 	cd->raw_mic_buffer_frame_index = 0;
 	cd->aec_reference_frame_index = 0;
@@ -583,15 +611,12 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	rate = audio_stream_get_rate(&output->stream);
 	output_stream_channels = audio_stream_get_channels(&output->stream);
 
-	if (cd->num_capture_channels > microphone_stream_channels) {
-		comp_err(dev, "unsupported number of microphone channels: %d",
-			 microphone_stream_channels);
+	if (microphone_stream_channels != output_stream_channels)
 		return -EINVAL;
-	}
 
-	if (cd->num_capture_channels > output_stream_channels) {
-		comp_err(dev, "unsupported number of output channels: %d",
-			 output_stream_channels);
+	if (microphone_stream_channels > MIC_CHAN_MAX) {
+		comp_warn(dev, "Too many mic channels: %d (max %d), truncating",
+			  microphone_stream_channels, MIC_CHAN_MAX);
 		return -EINVAL;
 	}
 
@@ -649,29 +674,29 @@ static int google_rtc_audio_processing_reset(struct processing_module *mod)
 /* FunctionMostlyExistsToKeepLineLengthsUnderControl */
 static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
 {
-	/* FIXME: sample/frame format is platform dependent, these are
-	 * hard-configured format APIs and need indirection.  Note
-	 * that the calling code in process() is format-independent.
-	 */
 	/* Note that reference input and mic output share the same
 	 * buffer for efficiency
 	 */
-	GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
-						    cd->refout_buffer);
-	GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
-						     cd->raw_mic_buffer,
-						     cd->refout_buffer);
+	GoogleRtcAudioProcessingAnalyzeRender_float32(cd->state,
+						      (const float **)cd->refout_buffers);
+	GoogleRtcAudioProcessingProcessCapture_float32(cd->state,
+						       (const float **)cd->raw_mic_buffers,
+						       cd->refout_buffers);
 	cd->raw_mic_buffer_frame_index = 0;
 }
 
-static void source_copy(struct sof_source *src, int frames, int16_t *dst)
+static void mic_in_copy(struct sof_source *src, int frames, float **dst_bufs, int frame0)
 {
-	size_t chan = source_get_channels(src);
+	size_t chan = MIN(MIC_CHAN_MAX, source_get_channels(src));
 	size_t samples = frames * chan;
-	size_t bytes = samples * sizeof(int16_t);
-	const int16_t *buf, *bufstart, *bufend;
+	size_t bytes = samples * sizeof(mic_sample_t);
+	const mic_sample_t *buf, *bufstart, *bufend;
+	float *dst[MIC_CHAN_MAX];
 	int i, c, err;
 	size_t bufsz;
+
+	for (i = 0; i < chan; i++)
+		dst[i] = &dst_bufs[i][frame0];
 
 	err = source_get_data(src, bytes, (void *)&buf, (void *)&bufstart, &bufsz);
 	assert(err == 0);
@@ -679,7 +704,7 @@ static void source_copy(struct sof_source *src, int frames, int16_t *dst)
 
 	for (i = 0; i < frames; i++) {
 		for  (c = 0; c < chan; c++) {
-			*dst++ = *buf++;
+			*dst[c]++ = mic_to_float(*buf++);
 			if (buf >= bufend)
 				buf = bufstart;
 		}
@@ -687,14 +712,46 @@ static void source_copy(struct sof_source *src, int frames, int16_t *dst)
 	source_release_data(src, bytes);
 }
 
-static void sink_copy(struct sof_sink *sink, int frames, int16_t *src)
+/* Nearly verbatim except for types.  Needs macro/inlining attention */
+static void ref_copy(struct sof_source *src, int frames, float **dst_bufs, int frame0)
 {
-	size_t chan = sink_get_channels(sink);
+	size_t chan = MIN(REF_CHAN_MAX, source_get_channels(src));
 	size_t samples = frames * chan;
-	size_t bytes = samples * sizeof(int16_t);
-	int16_t *buf, *bufstart, *bufend;
+	size_t bytes = samples * sizeof(ref_sample_t);
+	const ref_sample_t *buf, *bufstart, *bufend;
+	float *dst[REF_CHAN_MAX];
 	int i, c, err;
 	size_t bufsz;
+
+	for (i = 0; i < chan; i++)
+		dst[i] = &dst_bufs[i][frame0];
+
+	err = source_get_data(src, bytes, (void *)&buf, (void *)&bufstart, &bufsz);
+	assert(err == 0);
+	bufend = &bufstart[bufsz];
+
+	for (i = 0; i < frames; i++) {
+		for  (c = 0; c < chan; c++) {
+			*dst[c]++ = ref_to_float(*buf++);
+			if (buf >= bufend)
+				buf = bufstart;
+		}
+	}
+	source_release_data(src, bytes);
+}
+
+static void mic_out_copy(struct sof_sink *sink, int frames, float **src_bufs)
+{
+	size_t chan = MIN(MIC_CHAN_MAX, sink_get_channels(sink));
+	size_t samples = frames * chan;
+	size_t bytes = samples * sizeof(mic_sample_t);
+	mic_sample_t *buf, *bufstart, *bufend;
+	int i, c, err;
+	size_t bufsz;
+	float *src[MIC_CHAN_MAX];
+
+	for (i = 0; i < chan; i++)
+		src[i] = src_bufs[i];
 
 	err = sink_get_buffer(sink, bytes, (void *)&buf, (void *)&bufstart, &bufsz);
 	assert(err == 0);
@@ -702,7 +759,7 @@ static void sink_copy(struct sof_sink *sink, int frames, int16_t *src)
 
 	for (i = 0; i < frames; i++) {
 		for  (c = 0; c < chan; c++) {
-			*buf++ = *src++;
+			*buf++ = float_to_mic(*src[c]++);
 			if (buf >= bufend)
 				buf = bufstart;
 		}
@@ -750,16 +807,16 @@ static int mod_process(struct processing_module *mod, struct sof_source **source
 		int smic = cd->raw_mic_buffer_frame_index * source_get_channels(mic);
 		int sref = cd->aec_reference_frame_index * source_get_channels(ref);
 
-		source_copy(mic, n, &cd->raw_mic_buffer[smic]);
+		mic_in_copy(mic, n, cd->raw_mic_buffers, smic);
 
 		if (ref_ok)
-			source_copy(ref, n, &cd->refout_buffer[sref]);
+			ref_copy(ref, n, cd->refout_buffers, sref);
 
 		cd->raw_mic_buffer_frame_index += n;
 
 		if (cd->raw_mic_buffer_frame_index >= cd->num_frames) {
 			execute_aec(cd);
-			sink_copy(out, n, cd->refout_buffer);
+			mic_out_copy(out, n, cd->refout_buffers);
 		}
 	}
 	return 0;

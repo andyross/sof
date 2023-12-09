@@ -81,4 +81,18 @@ config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	  Mock Google real-time communication audio processing.
 	  It allows for compilation check and basic audio flow checking.
 
+config GOOGLE_RTC_AUDIO_PROCESSING_MIC_BITS
+	int "Sample format for capture input/output"
+	default 16
+	help
+	  Bits in the signed integer sample format used for the
+	  capture stream. 16 or 32.
+
+config GOOGLE_RTC_AUDIO_PROCESSING_REF_BITS
+	int "Sample format for reference input"
+	default 16
+	help
+	  Bits in the signed integer sample format used for playback
+	  reference. 16 or 32.
+
 endmenu
