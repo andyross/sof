@@ -63,6 +63,18 @@ DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_process
 static __aligned(PLATFORM_DCACHE_ALIGN)
 uint8_t aec_mem_blob[CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES];
 
+#define NUM_FRAMES (CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ \
+		    / GOOGLE_RTC_AUDIO_PROCESSING_FREQENCY_TO_PERIOD_FRAMES)
+#define REF_CHAN_MAX CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS
+#define MIC_CHAN_MAX CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS
+#define REFOUT_CHAN MAX(REF_CHAN_MAX, MIC_CHAN_MAX)
+
+static __aligned(PLATFORM_DCACHE_ALIGN)
+int16_t refoutbuf[sizeof(uint16_t) * NUM_FRAMES * REF_CHAN_MAX];
+
+static __aligned(PLATFORM_DCACHE_ALIGN)
+int16_t micbuf[sizeof(uint16_t) * NUM_FRAMES * REFOUT_CHAN];
+
 struct google_rtc_audio_processing_comp_data {
 #if CONFIG_IPC_MAJOR_4
 	struct sof_ipc4_aec_config config;
@@ -71,11 +83,10 @@ struct google_rtc_audio_processing_comp_data {
 	int num_aec_reference_channels;
 	int num_capture_channels;
 	GoogleRtcAudioProcessingState *state;
-	int16_t *aec_reference_buffer;
 	int aec_reference_frame_index;
 	int16_t *raw_mic_buffer;
 	int raw_mic_buffer_frame_index;
-	int16_t *output_buffer;
+	int16_t *refout_buffer;
 	int output_buffer_frame_index;
 	struct comp_data_blob_handler *tuning_handler;
 	bool reconfigure;
@@ -424,8 +435,7 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 
 	cd->num_aec_reference_channels = CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS;
 	cd->num_capture_channels = CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS;
-	cd->num_frames = CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ /
-		GOOGLE_RTC_AUDIO_PROCESSING_FREQENCY_TO_PERIOD_FRAMES;
+	cd->num_frames = NUM_FRAMES;
 
 	/* Giant blob of scratch memory. */
 	GoogleRtcAudioProcessingAttachMemoryBuffer(arch_xtensa_cached_ptr(&aec_mem_blob[0]),
@@ -455,35 +465,16 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 		goto fail;
 	}
 
-	cd->raw_mic_buffer = rballoc(
-		0, SOF_MEM_CAPS_RAM,
-		cd->num_frames * cd->num_capture_channels * sizeof(cd->raw_mic_buffer[0]));
-	if (!cd->raw_mic_buffer) {
-		ret = -EINVAL;
-		goto fail;
-	}
-	bzero(cd->raw_mic_buffer, cd->num_frames * cd->num_capture_channels * sizeof(cd->raw_mic_buffer[0]));
+	cd->raw_mic_buffer = &micbuf[0];
+	cd->refout_buffer = &refoutbuf[0];
+
+#ifdef __ZEPHYR__
+	cd->raw_mic_buffer = arch_xtensa_cached_ptr(cd->raw_mic_buffer);
+	cd->refout_buffer = &refoutbuf[0];
+#endif
+
 	cd->raw_mic_buffer_frame_index = 0;
-
-	cd->aec_reference_buffer = rballoc(
-		0, SOF_MEM_CAPS_RAM,
-		cd->num_frames * sizeof(cd->aec_reference_buffer[0]) *
-		cd->num_aec_reference_channels);
-	if (!cd->aec_reference_buffer) {
-		ret = -ENOMEM;
-		goto fail;
-	}
-	bzero(cd->aec_reference_buffer, cd->num_frames * cd->num_aec_reference_channels * sizeof(cd->aec_reference_buffer[0]));
 	cd->aec_reference_frame_index = 0;
-
-	cd->output_buffer = rballoc(
-		0, SOF_MEM_CAPS_RAM,
-		cd->num_frames * cd->num_capture_channels * sizeof(cd->output_buffer[0]));
-	if (!cd->output_buffer) {
-		ret = -ENOMEM;
-		goto fail;
-	}
-	bzero(cd->output_buffer, cd->num_frames * sizeof(cd->output_buffer[0]));
 	cd->output_buffer_frame_index = 0;
 
 	/* comp_is_new_data_blob_available always returns false for the first
@@ -502,13 +493,10 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 fail:
 	comp_err(dev, "google_rtc_audio_processing_init(): Failed");
 	if (cd) {
-		rfree(cd->output_buffer);
-		rfree(cd->aec_reference_buffer);
 		if (cd->state) {
 			GoogleRtcAudioProcessingFree(cd->state);
 		}
 		GoogleRtcAudioProcessingDetachMemoryBuffer();
-		rfree(cd->raw_mic_buffer);
 		comp_data_blob_handler_free(cd->tuning_handler);
 		rfree(cd);
 	}
@@ -524,10 +512,7 @@ static int google_rtc_audio_processing_free(struct processing_module *mod)
 
 	GoogleRtcAudioProcessingFree(cd->state);
 	cd->state = NULL;
-	rfree(cd->output_buffer);
-	rfree(cd->aec_reference_buffer);
 	GoogleRtcAudioProcessingDetachMemoryBuffer();
-	rfree(cd->raw_mic_buffer);
 	comp_data_blob_handler_free(cd->tuning_handler);
 	rfree(cd);
 	return 0;
@@ -690,11 +675,14 @@ static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
 	 * hard-configured format APIs and need indirection.  Note
 	 * that the calling code in process() is format-independent.
 	 */
+	/* Note that reference input and mic output share the same
+	 * buffer for efficiency
+	 */
 	GoogleRtcAudioProcessingAnalyzeRender_int16(cd->state,
-						    cd->aec_reference_buffer);
+						    cd->refout_buffer);
 	GoogleRtcAudioProcessingProcessCapture_int16(cd->state,
 						     cd->raw_mic_buffer,
-						     cd->output_buffer);
+						     cd->refout_buffer);
 	cd->raw_mic_buffer_frame_index = 0;
 }
 
@@ -721,9 +709,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 	 * the ref_ok state anyway.
 	 */
 	if (!ref_ok)
-		bzero(cd->aec_reference_buffer,
-		      (cd->num_frames * cd->num_aec_reference_channels
-		       * sizeof(cd->aec_reference_buffer[0])));
+		bzero(refoutbuf, sizeof(refoutbuf));
 
 	int micchan = audio_stream_get_channels(mic);
 	int refchan = audio_stream_get_channels(ref);
@@ -748,7 +734,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 					    n * micchan);
 
 		if (ref_ok)
-			audio_stream_copy_to_linear(ref, 0, cd->aec_reference_buffer,
+			audio_stream_copy_to_linear(ref, 0, cd->refout_buffer,
 						    cd->aec_reference_frame_index,
 						    n * refchan);
 
@@ -756,7 +742,7 @@ static int google_rtc_audio_processing_process(struct processing_module *mod,
 
 		if (cd->raw_mic_buffer_frame_index >= cd->num_frames) {
 			execute_aec(cd);
-			audio_stream_copy_from_linear(cd->output_buffer, 0, out, 0,
+			audio_stream_copy_from_linear(cd->refout_buffer, 0, out, 0,
 						      n * cd->num_capture_channels);
 		}
 	}
