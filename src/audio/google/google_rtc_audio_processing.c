@@ -52,6 +52,17 @@ DECLARE_SOF_RT_UUID("google-rtc-audio-processing", google_rtc_audio_processing_u
 DECLARE_TR_CTX(google_rtc_audio_processing_tr, SOF_UUID(google_rtc_audio_processing_uuid),
 			   LOG_LEVEL_INFO);
 
+#ifndef __ZEPHYR__
+/* Zephyr provides uncached memory for static variables on SMP, but we
+ * are single-core component and know we can safely use the cache for
+ * AEC work.  XTOS SOF is cached by default, so stub the Zephyr API.
+ */
+#define arch_xtensa_cached_ptr(p) (p)
+#endif
+
+static __aligned(PLATFORM_DCACHE_ALIGN)
+uint8_t aec_mem_blob[CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES];
+
 struct google_rtc_audio_processing_comp_data {
 #if CONFIG_IPC_MAJOR_4
 	struct sof_ipc4_aec_config config;
@@ -66,7 +77,6 @@ struct google_rtc_audio_processing_comp_data {
 	int raw_mic_buffer_frame_index;
 	int16_t *output_buffer;
 	int output_buffer_frame_index;
-	uint8_t *memory_buffer;
 	struct comp_data_blob_handler *tuning_handler;
 	bool reconfigure;
 	int aec_reference_source;
@@ -417,18 +427,9 @@ static int google_rtc_audio_processing_init(struct processing_module *mod)
 	cd->num_frames = CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ /
 		GOOGLE_RTC_AUDIO_PROCESSING_FREQENCY_TO_PERIOD_FRAMES;
 
-	if (CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES > 0) {
-		cd->memory_buffer = rballoc(0, SOF_MEM_CAPS_RAM,
-					    CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES *
-					    sizeof(cd->memory_buffer[0]));
-		if (!cd->memory_buffer) {
-			comp_err(dev, "google_rtc_audio_processing_init: failed to allocate memory buffer");
-			ret = -ENOMEM;
-			goto fail;
-		}
-
-		GoogleRtcAudioProcessingAttachMemoryBuffer(cd->memory_buffer, CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_MEMORY_BUFFER_SIZE_BYTES);
-	}
+	/* Giant blob of scratch memory. */
+	GoogleRtcAudioProcessingAttachMemoryBuffer(arch_xtensa_cached_ptr(&aec_mem_blob[0]),
+						   sizeof(aec_mem_blob));
 
 	cd->state = GoogleRtcAudioProcessingCreateWithConfig(CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ,
 							     cd->num_capture_channels,
@@ -507,7 +508,6 @@ fail:
 			GoogleRtcAudioProcessingFree(cd->state);
 		}
 		GoogleRtcAudioProcessingDetachMemoryBuffer();
-		rfree(cd->memory_buffer);
 		rfree(cd->raw_mic_buffer);
 		comp_data_blob_handler_free(cd->tuning_handler);
 		rfree(cd);
@@ -527,7 +527,6 @@ static int google_rtc_audio_processing_free(struct processing_module *mod)
 	rfree(cd->output_buffer);
 	rfree(cd->aec_reference_buffer);
 	GoogleRtcAudioProcessingDetachMemoryBuffer();
-	rfree(cd->memory_buffer);
 	rfree(cd->raw_mic_buffer);
 	comp_data_blob_handler_free(cd->tuning_handler);
 	rfree(cd);
