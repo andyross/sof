@@ -136,31 +136,6 @@ void GoogleRtcFree(void *ptr)
 	return rfree(ptr);
 }
 
-#if CONFIG_IPC_MAJOR_4
-static void google_rtc_audio_processing_params(struct processing_module *mod)
-{
-	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
-	struct sof_ipc_stream_params *params = mod->stream_params;
-	struct comp_buffer *sinkb, *sourceb;
-	struct list_item *source_list;
-	struct comp_dev *dev = mod->dev;
-
-	ipc4_base_module_cfg_to_stream_params(&mod->priv.cfg.base_cfg, params);
-	component_set_nearest_period_frames(dev, params->rate);
-
-	list_for_item(source_list, &dev->bsource_list) {
-		sourceb = container_of(source_list, struct comp_buffer, sink_list);
-		if (IPC4_SINK_QUEUE_ID(buf_get_id(sourceb)) == SOF_AEC_FEEDBACK_QUEUE_ID)
-			ipc4_update_buffer_format(sourceb, &cd->config.reference_fmt);
-		else
-			ipc4_update_buffer_format(sourceb, &mod->priv.cfg.base_cfg.audio_fmt);
-	}
-
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	ipc4_update_buffer_format(sinkb, &mod->priv.cfg.base_cfg.audio_fmt);
-}
-#endif
-
 static int google_rtc_audio_processing_reconfigure(struct processing_module *mod)
 {
 	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
@@ -564,10 +539,6 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 	int i = 0;
 
 	comp_info(dev, "google_rtc_audio_processing_prepare()");
-
-#if CONFIG_IPC_MAJOR_4
-	google_rtc_audio_processing_params(mod);
-#endif
 
 	/* searching for stream and feedback source buffers */
 	list_for_item(source_buffer_list_item, &dev->bsource_list) {
