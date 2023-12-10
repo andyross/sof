@@ -822,6 +822,35 @@ static int mod_process(struct processing_module *mod, struct sof_source **source
 	return 0;
 }
 
+static bool mod_is_ready_to_process(struct processing_module *mod,
+				    struct sof_source **sources, int num_of_sources,
+				    struct sof_sink **sinks, int num_of_sinks)
+{
+	struct google_rtc_audio_processing_comp_data *cd = module_get_private_data(mod);
+	struct sof_source *mic = sources[cd->raw_microphone_source];
+	struct sof_source *ref = sources[cd->aec_reference_source];
+	struct sof_sink *out = sinks[0];
+	bool ref_ok = cd->ref_comp_buffer->source->state == COMP_STATE_ACTIVE;
+
+	/* this should  source_get_min_available(ref_stream)!!!
+	 * Currently the topology sets IBS incorrectly
+	 */
+	if (ref_ok && (source_get_data_available(ref)
+		       < cd->num_frames * source_get_frame_bytes(ref)))
+		return false;
+
+	if (source_get_data_available(mic) < source_get_min_available(mic))
+		return false;
+
+	/* Output comes out all at once, the output sink much have
+	 * space for the full block
+	 */
+	if (sink_get_free_size(out) < cd->num_frames * sink_get_frame_bytes(out))
+		return false;
+
+	return true;
+}
+
 static struct module_interface google_rtc_audio_processing_interface = {
 	.init  = google_rtc_audio_processing_init,
 	.free = google_rtc_audio_processing_free,
@@ -831,6 +860,7 @@ static struct module_interface google_rtc_audio_processing_interface = {
 	.get_configuration = google_rtc_audio_processing_get_config,
 	.trigger = trigger_handler,
 	.reset = google_rtc_audio_processing_reset,
+	.is_ready_to_process = mod_is_ready_to_process,
 };
 
 DECLARE_MODULE_ADAPTER(google_rtc_audio_processing_interface,
