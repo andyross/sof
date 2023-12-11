@@ -1088,9 +1088,6 @@ static int module_adapter_copy_dp_queues(struct comp_dev *dev)
 		struct sof_source *data_src = dp_queue_get_source(dp_queue);
 		size_t dp_data_available = source_get_data_available(data_src);
 
-		if (!dp_data_available)
-			comp_err(dev, "!!!! no data available from DP");
-
 		uint32_t to_copy = MIN(source_get_min_available(following_mod_data_source),
 				       dp_data_available);
 

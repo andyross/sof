@@ -15,8 +15,6 @@ config COMP_GOOGLE_HOTWORD_DETECT
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	bool "Google Real Time Communication Audio processing"
 	select COMP_BLOB
-	select GOOGLE_RTC_AUDIO_PROCESSING_MOCK if COMP_STUBS
-	depends on IPC_MAJOR_4
 	default n
 	help
 	  Select for Google real-time communication audio processing. It
@@ -36,10 +34,11 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_CHANNELS
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	int "Number of channels to process for Google Real Time Communication Audio processing"
-	default 4
+	default 2 if MT8195
+	default 1
 	help
-	  Sets the number of channels to process in the Google real-time
-	  communication audio processing.
+	  Sets the number of input/mic channels to process in the
+	  Google real-time communication audio processing.
 
 config COMP_GOOGLE_RTC_AUDIO_PROCESSING_NUM_AEC_REFERENCE_CHANNELS
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
@@ -75,10 +74,24 @@ config COMP_GOOGLE_RTC_AUDIO_PROCESSING_MIC_HEADROOM_LINEAR
 
 config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	bool "Google Real Time Communication Audio processing mock"
-	default n
+	default y if COMP_STUBS
 	depends on COMP_GOOGLE_RTC_AUDIO_PROCESSING
 	help
 	  Mock Google real-time communication audio processing.
 	  It allows for compilation check and basic audio flow checking.
+
+config GOOGLE_RTC_AUDIO_PROCESSING_MIC_BITS
+	int "Sample format for capture input/output"
+	default 16
+	help
+	  Bits in the signed integer sample format used for the
+	  capture stream. 16 or 32.
+
+config GOOGLE_RTC_AUDIO_PROCESSING_REF_BITS
+	int "Sample format for reference input"
+	default 16
+	help
+	  Bits in the signed integer sample format used for playback
+	  reference. 16 or 32.
 
 endmenu
