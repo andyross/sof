@@ -138,13 +138,13 @@ int GoogleRtcAudioProcessingReconfigure(GoogleRtcAudioProcessingState *const sta
 	return 0;
 }
 
-int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState *const state,
-						   const float *const *src,
+int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState * const state,
+						   const float * const *src,
 						   float * const *dest)
 {
 	float *ref = state->aec_reference;
 	float **mic = (float **)src;
-	int n, chan, ref_chan;
+	int n, chan;
 
 	for (chan = 0; chan < state->num_output_channels; chan++) {
 		for (n = 0; n < state->num_frames; ++n) {
@@ -159,8 +159,8 @@ int GoogleRtcAudioProcessingProcessCapture_float32(GoogleRtcAudioProcessingState
 	return 0;
 }
 
-int GoogleRtcAudioProcessingAnalyzeRender_float32(GoogleRtcAudioProcessingState *const state,
-						  const float *const *data)
+int GoogleRtcAudioProcessingAnalyzeRender_float32(GoogleRtcAudioProcessingState * const state,
+						  const float * const *data)
 {
 	const size_t buffer_size =
 		sizeof(state->aec_reference[0])
