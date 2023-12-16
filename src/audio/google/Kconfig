@@ -75,6 +75,14 @@ config GOOGLE_RTC_AUDIO_PROCESSING_MOCK
 	  Mock Google real-time communication audio processing.
 	  It allows for compilation check and basic audio flow checking.
 
+config GOOGLE_RTC_AUDIO_PROCESSING_MOCK_DUTY_PCT
+	int "Active computation fraction for AEC mock"
+	default 50
+	help
+	  The mock rig will spin to emulate processing on the CPU.
+	  This tunable represents the percent of one (real time) block
+	  that is spend "computing" the mocked AEC results.
+
 endif # COMP_GOOGLE_RTC_AUDIO_PROCESSING
 
 endmenu

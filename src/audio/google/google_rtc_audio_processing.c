@@ -777,8 +777,29 @@ static int google_rtc_audio_processing_reset(struct processing_module *mod)
 	return 0;
 }
 
-static inline void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
+static inline void mock_copy(struct google_rtc_audio_processing_comp_data *cd)
 {
+	int f, c;
+
+	for (c = 0; c < CHAN_MAX; c++)
+		for (f = 0; f < cd->num_frames; f++)
+			cd->refout_buffers[c][f] = cd->raw_mic_buffers[c][f];
+
+#ifdef __ZEPHYR__
+	int64_t dt = (1000000L / 100) * cd->num_frames
+		* CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK_DUTY_PCT
+		/ CONFIG_COMP_GOOGLE_RTC_AUDIO_PROCESSING_SAMPLE_RATE_HZ;
+
+	k_busy_wait((int32_t) dt);
+#endif
+}
+
+static void execute_aec(struct google_rtc_audio_processing_comp_data *cd)
+{
+#if CONFIG_GOOGLE_RTC_AUDIO_PROCESSING_MOCK
+	mock_copy(cd);
+#endif
+
 	/* Note that reference input and mic output share the same
 	 * buffer for efficiency
 	 */
