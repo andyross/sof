@@ -628,6 +628,10 @@ static int google_rtc_audio_processing_prepare(struct processing_module *mod,
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_IPC_MAJOR_4
+	ipc4_update_source_format(sources[0], &mod->priv.cfg.input_pins[1].audio_fmt);
+#endif
+
 	/* searching for stream and feedback source buffers */
 	list_for_item(source_buffer_list_item, &dev->bsource_list) {
 		struct comp_buffer *source = container_of(source_buffer_list_item,
