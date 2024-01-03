@@ -34,8 +34,6 @@ struct module_config {
 	uint8_t nb_output_pins;
 	struct ipc4_input_pin_format *input_pins;
 	struct ipc4_output_pin_format *output_pins;
-	struct ipc4_base_module_cfg_ext *basecfg_ext; /* legacy API */
-
 #endif
 };
 

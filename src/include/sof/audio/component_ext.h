@@ -230,8 +230,7 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 	payload.type = type;
 
 	/*
-	 * Only COMP_ATTR_BASE_CONFIG and COMP_ATTR_BASE_CONFIG_EXT are supported for
-	 * remote access
+	 * Only COMP_ATTR_BASE_CONFIG is supported for remote access
 	 */
 	switch (type) {
 	case COMP_ATTR_BASE_CONFIG:
@@ -241,14 +240,6 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 			return -ENOMEM;
 
 		payload.value = base_cfg;
-		break;
-	case COMP_ATTR_BASE_CONFIG_EXT:
-		basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
-					  sizeof(*basecfg_ext) + size);
-		if (!basecfg_ext)
-			return -ENOMEM;
-
-		payload.value = basecfg_ext;
 		break;
 	default:
 		return -EINVAL;
@@ -262,10 +253,6 @@ static inline int comp_ipc4_get_attribute_remote(struct comp_dev *dev, uint32_t 
 			memcpy_s(value, sizeof(struct ipc4_base_module_cfg),
 				 base_cfg, sizeof(struct ipc4_base_module_cfg));
 			rfree(base_cfg);
-			break;
-		case COMP_ATTR_BASE_CONFIG_EXT:
-			memcpy_s(value, size, basecfg_ext, size);
-			rfree(basecfg_ext);
 			break;
 		}
 	}
