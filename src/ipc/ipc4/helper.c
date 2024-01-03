@@ -459,36 +459,14 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	if (!cpu_is_me(source->ipc_config.core) && !cross_core_bind)
 		return ipc4_process_on_core(source->ipc_config.core, false);
 
-	size = MODULE_MAX_SINKS * sizeof(struct ipc4_output_pin_format) +
-		MODULE_MAX_SOURCES * sizeof(struct ipc4_input_pin_format);
+	struct processing_module *srcmod = comp_get_drvdata(source);
+	struct processing_module *dstmod = comp_get_drvdata(sink);
+	struct module_config *dstcfg = &dstmod->priv.cfg;
+	struct module_config *srccfg = &srcmod->priv.cfg;
 
 	/* get obs from the base config extension if the src queue ID is non-zero */
-	if (bu->extension.r.src_queue) {
-		struct ipc4_output_pin_format *out_fmt;
-		size_t output_fmt_offset;
-
-		src_basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-					  sizeof(*src_basecfg_ext) + size);
-		if (!src_basecfg_ext)
-			return IPC4_OUT_OF_MEMORY;
-
-		ret = comp_get_attribute(source, COMP_ATTR_BASE_CONFIG_EXT, src_basecfg_ext);
-		if (!ret) {
-			size_t in_fmt_size = sizeof(struct ipc4_input_pin_format);
-			size_t out_fmt_size = sizeof(struct ipc4_output_pin_format);
-
-			/*
-			 * offset of the format for the output pin with ID 'src_queue' within the
-			 * base config extension.
-			 */
-			output_fmt_offset =
-				src_basecfg_ext->nb_input_pins * in_fmt_size +
-				bu->extension.r.src_queue * out_fmt_size;
-			out_fmt = (struct ipc4_output_pin_format *)&sink_basecfg_ext->pin_formats[output_fmt_offset];
-			obs = out_fmt->obs;
-		}
-		rfree(src_basecfg_ext);
-	}
+	if (bu->extension.r.src_queue && bu->extension.r.src_queue < srccfg->nb_output_pins)
+		obs = srccfg->output_pins[bu->extension.r.src_queue].obs;
 
 	/* get obs from base config if src queue ID is 0 or if base config extn is missing */
 	if (!obs) {
@@ -504,28 +482,8 @@ int ipc_comp_connect(struct ipc *ipc, ipc_pipe_comp_connect *_connect)
 	}
 
 	/* get ibs from the base config extension if the sink queue ID is non-zero */
-	if (bu->extension.r.dst_queue) {
-		struct ipc4_input_pin_format *in_fmt;
-		size_t input_fmt_offset;
-
-		sink_basecfg_ext = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-					   sizeof(*sink_basecfg_ext) + size);
-		if (!sink_basecfg_ext)
-			return IPC4_OUT_OF_MEMORY;
-
-		ret = comp_get_attribute(sink, COMP_ATTR_BASE_CONFIG_EXT, sink_basecfg_ext);
-		if (!ret) {
-			/*
-			 * offset of the format for the input pin with ID 'dst_queue' within the
-			 * base config extension.
-			 */
-			input_fmt_offset =
-				bu->extension.r.dst_queue * sizeof(struct ipc4_input_pin_format);
-			in_fmt = (struct ipc4_input_pin_format *)&sink_basecfg_ext->pin_formats[input_fmt_offset];
-			ibs = in_fmt->ibs;
-		}
-		rfree(sink_basecfg_ext);
-	}
+	if (bu->extension.r.dst_queue && bu->extension.r.dst_queue < dstcfg->nb_input_pins)
+		ibs = dstcfg->input_pins[bu->extension.r.dst_queue].ibs;
 
 	/* get ibs from base config if sink queue ID is 0 or if base config extn is missing */
 	if (!ibs) {
