@@ -43,6 +43,7 @@
 #include <version.h>
 #endif
 #include <sof/lib/ams.h>
+#include <mtprintf.h> //DEBUG
 
 #ifdef CONFIG_MEDIATEK
 #include <sof/drivers/uart.h>
@@ -339,7 +340,9 @@ static int primary_core_init(int argc, char *argv[], struct sof *sof)
 #ifndef __ZEPHYR__
 int main(int argc, char *argv[])
 {
+	MTPRINTF_LEN = 0;
 	int err = 0;
+	mtprintf("Hello SOF World!\n");
 
 	trace_point(TRACE_BOOT_START);
 
