@@ -370,6 +370,15 @@ if (CONFIG_SOC_MIMX9352_A55)
 	set(PLATFORM "imx93_a55")
 endif()
 
+if (CONFIG_SOC_FAMILY_MTK)
+	set(PLATFORM "mtk")
+
+	zephyr_library_sources(
+		${SOF_PLATFORM_PATH}/mtk/platform.c
+		${SOF_SRC_PATH}/schedule/zephyr_ll.c
+	)
+endif()
+
 # Building for native_posix-based whole-OS host emulator
 zephyr_library_sources_ifdef(CONFIG_ZEPHYR_POSIX
 	${SOF_SRC_PATH}/schedule/zephyr_ll.c

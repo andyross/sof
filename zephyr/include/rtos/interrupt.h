@@ -48,9 +48,7 @@ static inline void interrupt_unregister(uint32_t irq, const void *arg)
 
 static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
-#if defined(CONFIG_LIBRARY) || defined(CONFIG_ACE) || defined(CONFIG_CAVS) || \
-	defined(CONFIG_ZEPHYR_POSIX) || defined(CONFIG_ARM64) || \
-	defined(CONFIG_IMX8) || defined(CONFIG_IMX8X) || defined(CONFIG_IMX8ULP)
+#if defined(CONFIG_LIBRARY) || defined(__ZEPHYR__) || defined(CONFIG_ARM64)
 	return irq;
 #else
 	if (cascade == irq_name_level2)

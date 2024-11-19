@@ -102,6 +102,11 @@ extra_platform_configs = {
 		"ace30_LX7HiFi4_PIF",
 		ipc4 = True
 	),
+	"mt8196" : PlatformConfig(
+		"mtk", "mt8196/mt8196/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"HiFi5_MPU_lock_2023_11",
+	),
 }
 
 # These can all be built out of the box. --all builds all these.

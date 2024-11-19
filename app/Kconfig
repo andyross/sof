@@ -1,0 +1,30 @@
+config DCACHE_LINE_SIZE
+	default 128
+
+config CPU_HAS_DCACHE
+	default y
+
+config DCACHE
+	default y
+
+config CACHE_MANAGEMENT
+	default y
+
+config XTENSA_CCOUNT_HZ
+	default 800000000
+
+# SOF code assumes system work queue and other system
+# wide threads are pinned to a single core.
+# CPU_MASK_PIN_ONLY must be set for all SOF builds.
+config SCHED_CPU_MASK_PIN_ONLY
+	default y if SMP
+
+config SMP_BOOT_DELAY
+	default y if SMP
+
+# Zephyr platforms don't use legacy tracing
+config TRACE
+	default n
+
+source "Kconfig.zephyr"
+
