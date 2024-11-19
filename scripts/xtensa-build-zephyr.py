@@ -1158,7 +1158,7 @@ RI_INFO_UNSUPPORTED = []
 
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp']
 RI_INFO_UNSUPPORTED += ['rn']
-RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
+RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196']
 
 # For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
 RI_INFO_FIXME = [ ]
