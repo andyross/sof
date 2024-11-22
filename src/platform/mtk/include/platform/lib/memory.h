@@ -40,9 +40,9 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 // correctly.  Right now we're using the historical addresses.
 
 #ifdef CONFIG_SOC_MT8195
-#define MTK_IPC_WIN_BASE (DT_REG_ADDR(DT_NODELABEL(dram0)) + 0x800000)
+#define MTK_IPC_BASE (DT_REG_ADDR(DT_NODELABEL(dram0)) + 0x800000)
 #else
-#define MTK_IPC_WIN_BASE (DT_REG_ADDR(DT_NODELABEL(dram0)) + 0x500000)
+#define MTK_IPC_BASE (DT_REG_ADDR(DT_NODELABEL(dram0)) + 0x500000)
 #endif
 
 // Beware: the first two buffers are variously labelled UP/DOWN OUT/IN
@@ -62,7 +62,7 @@ static inline void *platform_shared_get(void *ptr, int bytes)
 #define _MTK_WIN_OFF_K_STREAM    (_MTK_WIN_SZ_K_EXCEPTION + _MTK_WIN_OFF_K_EXCEPTION)
 #define _MTK_WIN_OFF_K_TRACE     (_MTK_WIN_SZ_K_STREAM    + _MTK_WIN_OFF_K_STREAM)
 
-#define _MTK_IPC_WIN_BASE(reg) (MTK_IPC_WIN_BASE + 1024 * _MTK_WIN_OFF_K_##reg)
-#define _MTK_IPC_WIN_SIZE(reg) (1024 * _MTK_WIN_SZ_K_##reg)
+#define MTK_IPC_WIN_BASE(reg) (MTK_IPC_BASE + 1024 * _MTK_WIN_OFF_K_##reg)
+#define MTK_IPC_WIN_SIZE(reg) (1024 * _MTK_WIN_SZ_K_##reg)
 
 #endif /* _SOF_PLATFORM_MTK_LIB_MEMORY_H */

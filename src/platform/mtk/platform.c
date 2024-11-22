@@ -5,16 +5,19 @@
 
 int platform_init(struct sof *sof)
 {
+        printk("ANDY %s:%d\n", __func__, __LINE__);
 	return 0;
 }
 
 int platform_boot_complete(uint32_t boot_message)
 {
+        printk("ANDY %s:%d\n", __func__, __LINE__);
 	return 0;
 }
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
+        printk("ANDY %s:%d\n", __func__, __LINE__);
 }
 
 // Extended manifest window record.  Note the alignment attribute is
@@ -26,8 +29,8 @@ void ipc_platform_complete_cmd(struct ipc *ipc)
 
 #define WINDOW(region)				\
 	{ .type = SOF_IPC_REGION_##region,	\
-	  .size = _MTK_IPC_WIN_SIZE(region),	\
-	  .offset = _MTK_IPC_WIN_BASE(region), }
+	  .size = MTK_IPC_WIN_SIZE(region),	\
+	  .offset = MTK_IPC_WIN_BASE(region), }
 
 struct ext_man_windows mtk_man_win __section(".fw_metadata") __aligned(EXT_MAN_ALIGN) = {
         .hdr = {
