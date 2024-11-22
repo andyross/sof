@@ -134,22 +134,26 @@ int ext_man_write(struct image *image)
 	int ret;
 
 	ret = ext_man_open_file(image);
+	printf("ANDY %s:%d ret %d\n", __func__, __LINE__, ret);
 	if (ret)
 		goto out;
 
 	file = ext_man_find_module(image, &section);
+	printf("ANDY %s:%d ret %d\n", __func__, __LINE__, ret);
 	if (!file) {
 		ret = -ECANCELED;
 		goto out;
 	}
 
 	ret = ext_man_build(file, section, &ext_man);
+	printf("ANDY %s:%d ret %d\n", __func__, __LINE__, ret);
 	if (ret)
 		goto out;
 
 	/* validate metadata section */
 	ret = ext_man_validate(ext_man->full_size - ext_man->header_size,
 			       (char *)ext_man + ext_man->header_size);
+	printf("ANDY %s:%d ret %d\n", __func__, __LINE__, ret);
 	if (ret) {
 		ret = -errno;
 		goto out;
@@ -158,6 +162,7 @@ int ext_man_write(struct image *image)
 	/* write extended metadata to file */
 	count = fwrite(ext_man, 1, ext_man->full_size, image->out_ext_man_fd);
 
+	printf("ANDY %s:%d ret %d\n", __func__, __LINE__, ret);
 	if (count != ext_man->full_size) {
 		ret = file_error("can't write extended manifest", image->out_ext_man_file);
 		goto out;

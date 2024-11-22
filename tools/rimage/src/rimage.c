@@ -259,10 +259,13 @@ int main(int argc, char *argv[])
 
 	/* build extended manifest */
 	if (use_ext_man) {
-		if (image.adsp->write_firmware_ext_man)
+		if (image.adsp->write_firmware_ext_man) {
 			ret = image.adsp->write_firmware_ext_man(&image);
-		else
+			printf("ANDY %s:%d ret %d\n", __func__, __LINE__, ret);
+		} else {
 			ret = ext_man_write(&image);
+			printf("ANDY %s:%d ret %d\n", __func__, __LINE__, ret);
+		}
 
 		if (ret < 0) {
 			fprintf(stderr, "error: unable to write extended manifest, %d\n",
