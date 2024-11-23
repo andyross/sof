@@ -26,5 +26,11 @@ config SMP_BOOT_DELAY
 config TRACE
 	default n
 
+# FIXME: figure this out, "host page table", MTK/NXP both need it, old
+# old flag (see commit fb784218b500).  But I **think** MTK doesn't
+# care about host addresses?  Might be just cut/paste
+config HOST_PTABLE
+	default y if CONFIG_SOC_FAMILY_MTK
+
 source "Kconfig.zephyr"
 

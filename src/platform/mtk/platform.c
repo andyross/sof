@@ -1,31 +1,95 @@
+#include <rtos/clk.h>
+#include <platform/lib/memory.h>
+#include <kernel/ext_manifest.h>
 #include <sof/platform.h>
 #include <sof/ipc/driver.h>
-#include <kernel/ext_manifest.h>
-#include <platform/lib/memory.h>
+#include <sof/lib/agent.h>
+#include <sof/lib/notifier.h>
+#include <sof/schedule/ll_schedule_domain.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/edf_schedule.h>
 
-int platform_init(struct sof *sof)
+void mtk_dai_init(struct sof *sof);
+
+int platform_ipc_init(struct ipc *ipc)
 {
         printk("ANDY %s:%d\n", __func__, __LINE__);
-	return 0;
-}
-
-int platform_boot_complete(uint32_t boot_message)
-{
-        printk("ANDY %s:%d\n", __func__, __LINE__);
-	return 0;
+        // FIXME
+        return 0;
 }
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
         printk("ANDY %s:%d\n", __func__, __LINE__);
+        // FIXME
+}
+
+int ipc_platform_send_msg(const struct ipc_msg *msg)
+{
+        printk("ANDY %s:%d\n", __func__, __LINE__);
+        // FIXME
+	return 0;
+}
+
+static int set_cpuclk(int clock, int hz)
+{
+        return clock == 0 && hz == CONFIG_XTENSA_CCOUNT_HZ ? 0 : -EINVAL;
+}
+
+void clocks_init(struct sof *sof)
+{
+        // Dummy CPU clock driver that supports one known frequency.
+        // This hardware has clock scaling support, but it hasn't
+        // historically been exercised so we have nothing to test
+        // against.
+        static struct freq_table freqs[] = {
+                { .freq = CONFIG_XTENSA_CCOUNT_HZ,
+                  .ticks_per_msec = CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC / 1000, }
+        };
+        static struct clock_info clks[] = {
+                { .freqs_num = ARRAY_SIZE(freqs),
+                  .freqs = freqs,
+                  .notification_id = NOTIFIER_ID_CPU_FREQ,
+                  .notification_mask = NOTIFIER_TARGET_CORE_MASK(0),
+                  .set_freq = set_cpuclk, },
+        };
+        sof->clocks = clks;
+}
+
+int platform_init(struct sof *sof)
+{
+        int ret;
+        printk("ANDY %s:%d\n", __func__, __LINE__);
+
+        clocks_init(sof);
+
+        sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
+
+        ipc_init(sof);
+
+        mtk_dai_init(sof);
+
+        scheduler_init_edf();
+        scheduler_init_ll(sof->platform_timer_domain);
+
+        sa_init(sof, CONFIG_SYSTICK_PERIOD); // watchdoggy thingy
+
+	return 0;
+}
+
+int platform_boot_complete(uint32_t boot_message)
+{
+        printk("ANDY %s:%d (send an IPC here, right?)\n", __func__, __LINE__);
+        // FIXME
+	return 0;
 }
 
 // Extended manifest window record.  Note the alignment attribute is
-// critical as rimage demands allocation in units of 16 bytes, yet
-// other records emitted into the same section are not padded!
-// (Really this is an rimage bug, it should separately validate each
-// symbol in the section and re-pack the array instead of relying on
-// the poor linker to do it).
+// critical as rimage demands allocation in units of 16 bytes, yet the
+// C struct records emitted into the section are not in general padded
+// and will pack tighter than that!  (Really this is an rimage bug, it
+// should separately validate each symbol in the section and re-pack
+// the array instead of relying on the poor linker to do it).
 
 #define WINDOW(region)				\
 	{ .type = SOF_IPC_REGION_##region,	\
