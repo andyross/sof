@@ -127,7 +127,7 @@ int platform_boot_complete(uint32_t boot_message)
 #define WINDOW(region)				\
 	{ .type = SOF_IPC_REGION_##region,	\
 	  .size = MTK_IPC_WIN_SIZE(region),	\
-	  .offset = MTK_IPC_WIN_BASE(region), }
+	  .offset = MTK_IPC_WIN_OFF(region), }
 
 struct ext_man_windows mtk_man_win __section(".fw_metadata") __aligned(EXT_MAN_ALIGN) = {
         .hdr = {
