@@ -2,33 +2,51 @@
 #include <platform/lib/memory.h>
 #include <kernel/ext_manifest.h>
 #include <sof/platform.h>
+#include <sof/debug/debug.h>
 #include <sof/ipc/driver.h>
+#include <sof/ipc/msg.h>
 #include <sof/lib/agent.h>
+#include <sof/lib/mailbox.h>
 #include <sof/lib/notifier.h>
 #include <sof/schedule/ll_schedule_domain.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof_versions.h>
 
 void mtk_dai_init(struct sof *sof);
 
+#define MBOX0 DEVICE_DT_GET(DT_INST(0, mediatek_mbox))
+#define MBOX1 DEVICE_DT_GET(DT_INST(1, mediatek_mbox))
+
+static void mtk_ipc_send(const void *msg, size_t sz)
+{
+        mailbox_dspbox_write(0, msg, sz);
+        mtk_adsp_mbox_signal(MBOX0, 0);
+}
+
 int platform_ipc_init(struct ipc *ipc)
 {
-        printk("ANDY %s:%d\n", __func__, __LINE__);
+        printk("ANDY %s:%d (FIXME: register mbox handlers)\n", __func__, __LINE__);
         // FIXME
         return 0;
 }
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
-        printk("ANDY %s:%d\n", __func__, __LINE__);
-        // FIXME
+        mtk_adsp_mbox_signal(MBOX1, 1);
 }
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
 {
         printk("ANDY %s:%d\n", __func__, __LINE__);
-        // FIXME
-	return 0;
+        struct ipc *ipc = ipc_get();
+
+        if (ipc->is_notification_pending)
+                return -EBUSY;
+
+        ipc->is_notification_pending = true;
+        mtk_ipc_send(msg->tx_data, msg->tx_size);
+        return 0;
 }
 
 static int set_cpuclk(int clock, int hz)
@@ -79,8 +97,23 @@ int platform_init(struct sof *sof)
 
 int platform_boot_complete(uint32_t boot_message)
 {
-        printk("ANDY %s:%d (send an IPC here, right?)\n", __func__, __LINE__);
-        // FIXME
+        printk("ANDY %s:%d\n", __func__, __LINE__);
+        static const struct sof_ipc_fw_ready fw_ready_cmd = {
+                .hdr.cmd = SOF_IPC_FW_READY,
+                .hdr.size = sizeof(struct sof_ipc_fw_ready),
+                .version = {
+                        .hdr.size = sizeof(struct sof_ipc_fw_version),
+                        .micro = SOF_MICRO,
+                        .minor = SOF_MINOR,
+                        .major = SOF_MAJOR,
+                        .tag = SOF_TAG,
+                        .abi_version = SOF_ABI_VERSION,
+                        .src_hash = SOF_SRC_HASH,
+                },
+                .flags = DEBUG_SET_FW_READY_FLAGS,
+        };
+
+        mtk_ipc_send(&fw_ready_cmd, sizeof(fw_ready_cmd));
 	return 0;
 }
 
