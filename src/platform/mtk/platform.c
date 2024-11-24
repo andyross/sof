@@ -12,6 +12,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof_versions.h>
+#include <sof/ipc/schedule.h>
 
 void mtk_dai_init(struct sof *sof);
 
@@ -24,10 +25,24 @@ static void mtk_ipc_send(const void *msg, size_t sz)
         mtk_adsp_mbox_signal(MBOX0, 0);
 }
 
+static void mbox0_fn(const struct device *mbox, void *arg)
+{
+	printk("ANDY %s:%d\n", __func__, __LINE__);
+	ipc_schedule_process(ipc_get());
+}
+
+static void mbox1_fn(const struct device *mbox, void *arg)
+{
+	printk("ANDY %s:%d\n", __func__, __LINE__);
+	ipc_get()->is_notification_pending = false;
+}
+
 int platform_ipc_init(struct ipc *ipc)
 {
-        printk("ANDY %s:%d (FIXME: register mbox handlers)\n", __func__, __LINE__);
-        // FIXME
+	printk("ANDY %s:%d\n", __func__, __LINE__);
+	mtk_adsp_mbox_set_handler(MBOX0, 1, mbox0_fn, NULL);
+	mtk_adsp_mbox_set_handler(MBOX1, 1, mbox1_fn, NULL);
+
         return 0;
 }
 
