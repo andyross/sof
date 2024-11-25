@@ -208,6 +208,71 @@ static const struct mtk_base_memif_data mtk_memif_data[] = {
 #define MTK_DL_NUM 2
 
 ////////////////////////////////////////////////////////////////////////
+// Alternate Devicetree-based DAI/AFE config mechanism.  Maintain in
+// parallel for a bit.
+
+/* Bitfield register: address, number of bits, and left shift amount */
+struct afe_bitfld {
+	uint32_t reg;
+	uint8_t shift;
+	uint8_t bits;
+};
+
+/* Pair of registers to store a 64 bit host/bus address */
+struct afe_busreg {
+	uint32_t hi;
+	uint32_t lo;
+};
+
+struct afe_cfg {
+	char afe_name[32];
+	int dai_id;
+	bool downlink;
+	bool mono_invert;
+	struct afe_busreg base;
+	struct afe_busreg end;
+	struct afe_busreg cur;
+	struct afe_bitfld fs;
+	struct afe_bitfld hd;
+	struct afe_bitfld enable;
+	struct afe_bitfld mono;
+	struct afe_bitfld quad_ch;
+	struct afe_bitfld int_odd;
+	struct afe_bitfld msb;
+	struct afe_bitfld msb2;
+	struct afe_bitfld agent_disable;
+	struct afe_bitfld ch_num;
+};
+
+/* Some properties may be skipped/defaulted in DTS */
+#define COND_PROP(n, prop) \
+	IF_ENABLED(DT_NODE_HAS_PROP(n, prop), (.prop = DT_PROP(n, prop),))
+
+#define GENAFE(n) { \
+	.afe_name = DT_PROP(n, afe_name), \
+	.dai_id = DT_PROP(n, dai_id), \
+	.downlink = DT_PROP(n, downlink), \
+	.mono_invert = DT_PROP(n, mono_invert), \
+	.base = DT_PROP(n, base), \
+	.end = DT_PROP(n, end), \
+	.cur = DT_PROP(n, cur), \
+	.fs = DT_PROP(n, fs), \
+	.hd = DT_PROP(n, hd), \
+	.enable = DT_PROP(n, enable), \
+	COND_PROP(n, mono) \
+	COND_PROP(n, quad_ch) \
+	COND_PROP(n, int_odd) \
+	COND_PROP(n, msb) \
+	COND_PROP(n, msb2) \
+	COND_PROP(n, agent_disable) \
+	COND_PROP(n, ch_num) \
+	},
+
+static const struct afe_cfg afes[] = {
+	DT_FOREACH_STATUS_OKAY(mediatek_afe, GENAFE)
+};
+
+////////////////////////////////////////////////////////////////////////
 
 extern const struct dma_ops memif_ops;
 
