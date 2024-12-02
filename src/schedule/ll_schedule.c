@@ -32,6 +32,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
+
 
 LOG_MODULE_REGISTER(ll_schedule, CONFIG_SOF_LOG_LEVEL);
 
@@ -178,8 +180,8 @@ static inline void dsp_load_check(struct task *task, uint32_t cycles0, uint32_t 
 
 	if (++task->cycles_cnt == 1 << CHECKS_WINDOW_SIZE) {
 		task->cycles_sum >>= CHECKS_WINDOW_SIZE;
-		tr_info(&ll_tr, "task %p %pU avg %u, max %u", task, task->uid,
-			task->cycles_sum, task->cycles_max);
+		//tr_info(&ll_tr, "task %p %pU avg %u, max %u", task, task->uid,
+		//	task->cycles_sum, task->cycles_max);
 		task->cycles_sum = 0;
 		task->cycles_max = 0;
 		task->cycles_cnt = 0;
@@ -773,7 +775,6 @@ static void ll_scheduler_notify(void *arg, enum notify_id type, void *data)
 int scheduler_init_ll(struct ll_schedule_domain *domain)
 {
 	struct ll_schedule_data *sch;
-
 	/* initialize scheduler private data */
 	sch = rzalloc(SOF_MEM_ZONE_SYS, 0, SOF_MEM_CAPS_RAM, sizeof(*sch));
 	list_init(&sch->tasks);

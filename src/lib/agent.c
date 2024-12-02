@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <rtos/kernel.h>
 
+#include <platform/printf.h>
 LOG_MODULE_REGISTER(sa, CONFIG_SOF_LOG_LEVEL);
 
 SOF_DEFINE_REG_UUID(sa);
@@ -82,9 +83,9 @@ static enum task_state validate(void *data)
 	if (delta > sa->warn_timeout) {
 		if (delta > UINT_MAX)
 			tr_warn(&sa_tr, "validate(), ll drift detected, delta > %u", UINT_MAX);
-		else
-			tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
-				(unsigned int)delta);
+		//else
+			//tr_warn(&sa_tr, "validate(), ll drift detected, delta = %u",
+			//	(unsigned int)delta);
 	}
 
 	/* update last_check to current */

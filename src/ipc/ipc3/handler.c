@@ -53,6 +53,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
+
 
 /* Command format errors during fuzzing are reported for virtually all
  * commands, and the resulting flood of logging becomes a severe
@@ -215,6 +217,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct ipc_comp_dev *pcm_dev;
 	struct sof_ipc_stream_posn posn;
 	int err, reset_err;
+	tr_info(&ipc_tr, "stream: 0x%x\n", stream);
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(pcm_params, ipc->comp_data);
@@ -230,7 +233,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: comp %d -> params", pcm_params.comp_id);
+	tr_info(&ipc_tr, "ipc: comp %d -> params", pcm_params.comp_id);
 
 	/* sanity check comp */
 	if (!pcm_dev->cd->pipeline) {
@@ -269,7 +272,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		 * IPC4 has a use-case when a PCM parameter change request can
 		 * be sent on an active pipeline, ignore it
 		 */
-		pipe_dbg(pcm_dev->cd->pipeline,
+		pipe_info(pcm_dev->cd->pipeline,
 			 "ipc: ignore PCM param change request on an active pipeline");
 		return 0;
 	}
@@ -463,7 +466,7 @@ static int ipc_stream_trigger(uint32_t header)
 	if (!cpu_is_me(pcm_dev->core))
 		return ipc_process_on_core(pcm_dev->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: comp %d -> trigger cmd 0x%x",
+	tr_info(&ipc_tr, "ipc: comp %d -> trigger cmd 0x%x",
 	       stream.comp_id, ipc_command);
 
 	switch (ipc_command) {
@@ -533,6 +536,7 @@ static int ipc_stream_trigger(uint32_t header)
 static int ipc_glb_stream_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
+	tr_info(&ipc_tr, "cmd: 0x%x\n", cmd);
 
 	switch (cmd) {
 	case SOF_IPC_STREAM_PCM_PARAMS:
@@ -635,6 +639,7 @@ static int ipc_msg_dai_config(uint32_t header)
 static int ipc_glb_dai_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
+	tr_info(&ipc_tr, "cmd: 0x%x\n", cmd);
 
 	switch (cmd) {
 	case SOF_IPC_DAI_CONFIG:
@@ -1265,7 +1270,7 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	if (!cpu_is_me(comp->core))
 		return ipc_process_on_core(comp->core, false);
 
-	tr_dbg(&ipc_tr, "ipc: pipe %d comp %d -> new (type %d)",
+	tr_info(&ipc_tr, "ipc: pipe %d comp %d -> new (type %d)",
 	       comp->pipeline_id, comp->id, comp->type);
 
 	/* register component */
@@ -1401,6 +1406,7 @@ static int ipc_glb_tplg_free(uint32_t header,
 static int ipc_glb_tplg_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
+	tr_info(&ipc_tr, "mt8196: cmd: 0x%x", cmd);
 
 	switch (cmd) {
 	case SOF_IPC_TPLG_COMP_NEW:
@@ -1638,11 +1644,12 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	if (cpu_is_primary(cpu_get_id())) {
 		/* A new IPC from the host, delivered to the primary core */
 		ipc->core = PLATFORM_PRIMARY_CORE_ID;
-		tr_info(&ipc_tr, "ipc: new cmd 0x%x", hdr->cmd);
+		tr_info(&ipc_tr, "-----ipc: new cmd 0x%x-----", hdr->cmd);
 	}
 
 	type = iGS(hdr->cmd);
 
+	tr_info(&ipc_tr, "cmd: 0x%x, type: 0x%x", hdr->cmd, type);
 	switch (type) {
 	case SOF_IPC_GLB_REPLY:
 		ret = 0;
@@ -1692,7 +1699,7 @@ void ipc_cmd(struct ipc_cmd_hdr *_hdr)
 	}
 
 out:
-	tr_dbg(&ipc_tr, "ipc: last request 0x%x returned %d", type, ret);
+	tr_info(&ipc_tr, "-----ipc: last request 0x%x returned %d------\n", type, ret);
 
 	/* if ret > 0, reply created and copied by cmd() */
 	if (ret <= 0) {

@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
 
 SOF_DEFINE_REG_UUID(memif);
 
@@ -56,7 +57,7 @@ static struct dma_chan_data *memif_channel_get(struct dma *dma, unsigned int req
 	k_spinlock_key_t key;
 	struct dma_chan_data *channel;
 
-	tr_dbg(&memif_tr, "MEMIF: channel_get(%d)", req_chan);
+	tr_info(&memif_tr, "MEMIF: channel_get(%d)", req_chan);
 
 	key = k_spin_lock(&dma->lock);
 	if (req_chan >= dma->plat_data.channels) {
@@ -204,6 +205,7 @@ static int memif_status(struct dma_chan_data *channel, struct dma_chan_status *s
 {
 	struct afe_memif_dma *memif = dma_chan_get_data(channel);
 	unsigned int hw_ptr;
+	tr_info(&memif_tr, "memif_status()\n");
 
 	status->state = channel->status;
 	status->flags = 0;
@@ -240,8 +242,7 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 	channel->direction = config->direction;
 
 	direction = afe_memif_get_direction(memif->afe, memif->memif_id);
-	tr_info(&memif_tr, "memif_set_config, direction:%d, afe_dir:%d", config->direction,
-		direction);
+	tr_info(&memif_tr, "memif->memif_id: %d, direction:%d, afe_dir:%d", memif->memif_id, config->direction,direction);
 
 	switch (config->direction) {
 	case DMA_DIR_MEM_TO_DEV:
@@ -251,6 +252,7 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 		dai_id = (int)AFE_HS_GET_DAI(config->dest_dev);
 		irq_id = (int)AFE_HS_GET_IRQ(config->dest_dev);
 		dma_addr = (int)config->elem_array.elems[0].src;
+		tr_info(&memif_tr, "dai_id: %d, irq_id:%d, dma_addr:0x%x",dai_id, irq_id, dma_addr);
 		break;
 	case DMA_DIR_DEV_TO_MEM:
 		if (direction != MEM_DIR_CAPTURE)
@@ -259,7 +261,7 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 		dai_id = (int)AFE_HS_GET_DAI(config->src_dev);
 		irq_id = (int)AFE_HS_GET_IRQ(config->src_dev);
 		dma_addr = (int)config->elem_array.elems[0].dest;
-		tr_dbg(&memif_tr, "capture: dai_id:%d, dma_addr:%u\n", dai_id, dma_addr);
+		tr_info(&memif_tr, "capture: dai_id:%d, dma_addr:%u\n", dai_id, dma_addr);
 		break;
 	default:
 		tr_err(&memif_tr, "afe_memif_set_config() unsupported config direction");
@@ -305,12 +307,18 @@ static int memif_set_config(struct dma_chan_data *channel, struct dma_sg_config 
 		tr_err(&memif_tr, "afe-memif: not support bitwidth %u!", config->src_width);
 		return -ENOTSUP;
 	}
+	tr_info(&memif_tr, "afe_memif_set_params: memif_id: %d, memif->channel: %d, memif->rate: %d, memif->format: %d\n",
+		memif->memif_id, memif->channel, memif->rate,memif->format);
 
 	/* set the afe memif parameters */
 	ret = afe_memif_set_params(memif->afe, memif->memif_id, memif->channel, memif->rate,
 				   memif->format);
 	if (ret < 0)
 		return ret;
+
+	
+	tr_info(&memif_tr, "afe_memif_set_addr: memif_id: %d, memif->dma_base: 0x%x, memif->dma_size: %d\n",
+		memif->memif_id, memif->dma_base, memif->dma_size);
 	ret = afe_memif_set_addr(memif->afe, memif->memif_id, memif->dma_base, memif->dma_size);
 	if (ret < 0)
 		return ret;
@@ -323,6 +331,7 @@ static int memif_remove(struct dma *dma)
 {
 	int channel;
 	struct mtk_base_afe *afe = afe_get();
+	tr_info(&memif_tr, "memif_remove()\n");
 
 	if (!dma->chan) {
 		tr_err(&memif_tr, "MEMIF: remove called without probe, it's a no-op");
@@ -344,8 +353,10 @@ static int memif_probe(struct dma *dma)
 {
 	int channel;
 	int ret;
-	struct mtk_base_afe *afe = afe_get();
+	struct mtk_base_afe *afe = afe_get(); // it is global
 	struct afe_memif_dma *memif;
+
+	tr_info(&memif_tr, "dma: %p\n", dma);
 
 	if (!dma || dma->chan) {
 		tr_err(&memif_tr, "MEMIF: Repeated probe");
@@ -382,6 +393,7 @@ static int memif_probe(struct dma *dma)
 		memif->afe = afe;
 		memif->memif_id = channel;
 		dma_chan_set_data(&dma->chan[channel], memif);
+		tr_info(&memif_tr, "memif->memif_id: %d, memif addr: %p\n", memif->memif_id, memif);
 	}
 	return 0;
 
@@ -398,6 +410,7 @@ static int memif_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 	unsigned int sample_size;
 	struct afe_memif_dma *memif;
 	struct mtk_base_afe *afe = afe_get();
+	tr_info(&memif_tr, "memif_interrupt()\n");
 
 	if (channel->status == COMP_STATE_INIT)
 		return 0;
@@ -429,6 +442,8 @@ static int memif_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
 /* TODO need convert number to platform MACRO */
 static int memif_get_attribute(struct dma *dma, uint32_t type, uint32_t *value)
 {
+	tr_info(&memif_tr, "memif_get_attribute(), type: %d\n", type);
+
 	switch (type) {
 	case DMA_ATTR_BUFFER_ALIGNMENT:
 	case DMA_ATTR_COPY_ALIGNMENT:

@@ -126,6 +126,8 @@ struct pipeline *pipeline_new(uint32_t pipeline_id, uint32_t priority, uint32_t 
 		return NULL;
 	}
 
+	pipe_cl_info("new pipeline id: %d, addr: %p", pipeline_id, p);
+
 	/* init pipeline */
 	p->comp_id = comp_id;
 	p->priority = priority;

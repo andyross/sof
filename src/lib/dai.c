@@ -17,6 +17,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
+
 
 #if CONFIG_ZEPHYR_NATIVE_DRIVERS
 #include <zephyr/device.h>
@@ -257,6 +259,8 @@ static inline const struct dai_type_info *dai_find_type(uint32_t type)
 	const struct dai_info *info = dai_info_get();
 	const struct dai_type_info *dti;
 
+	tr_info(&dai_tr, "type: 0x%x, info: %p\n", type, info);
+
 	for (dti = info->dai_type_array;
 	     dti < info->dai_type_array + info->num_dai_types; dti++) {
 		if (dti->type == type)
@@ -273,6 +277,8 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	k_spinlock_key_t key;
 
 	dti = dai_find_type(type);
+	tr_info(&dai_tr, "dti->type: 0x%x, dti->num_dais: %d\n",dti->type, dti->num_dais);
+
 	if (!dti)
 		return NULL; /* type not found */
 

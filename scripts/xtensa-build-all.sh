@@ -10,12 +10,13 @@ set -e
 DEFAULT_PLATFORMS=(
     imx8m
     rn rmb vangogh
-    mt8186 mt8195 mt8188
+    mt8186 mt8195 mt8188 mt8196
 )
 
 # Work in progress can be added to this "staging area" without breaking
 # the -a option for everyone.
 SUPPORTED_PLATFORMS=( "${DEFAULT_PLATFORMS[@]}" )
+SUPPORTED_PLATFORMS+=( mt8196 )
 
 # Container work is in progress
 SUPPORTED_PLATFORMS+=( acp_6_3 )
@@ -213,7 +214,7 @@ do
 		# make sure the required version of xtensa tools is installed
 		if [ -d "$XTENSA_TOOLS_DIR" ]
 			then
-				XCC="xt-xcc"
+				XCC="xt-clang"
 			else
 				XCC="none"
 				>&2 printf 'WARNING: %s
@@ -225,7 +226,7 @@ do
 	# --sysroot would.
 	ROOT="$SOF_TOP/../xtensa-root/$HOST"
 
-	if [ "$XCC" == "xt-xcc" ]
+	if [ "$XCC" == "xt-clang" ]
 	then
 		TOOLCHAIN=xt
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
@@ -234,7 +235,7 @@ do
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		printf 'XTENSA_SYSTEM=%s\n' "${XTENSA_SYSTEM}"
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
-		COMPILER="xcc"
+		COMPILER="clang"
 	else
 		TOOLCHAIN=$HOST
 		PATH=$SOF_TOP/../$HOST/bin:$OLDPATH

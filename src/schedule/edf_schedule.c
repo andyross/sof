@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
 
 SOF_DEFINE_REG_UUID(edf_sched);
 

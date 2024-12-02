@@ -39,14 +39,14 @@ static inline void afe_reg_read(struct mtk_base_afe *afe, uint32_t reg, uint32_t
 static inline void afe_reg_write(struct mtk_base_afe *afe, uint32_t reg, uint32_t value)
 {
 	io_reg_write((uint32_t)((char *)afe->base + reg), value);
-	tr_dbg(&afedrv_tr, "w_reg:0x%x, value:0x%x\n", reg, value);
+	tr_info(&afedrv_tr, "w_reg:0x%x, value:0x%x\n", reg, value);
 }
 
 static inline void afe_reg_update_bits(struct mtk_base_afe *afe, uint32_t reg, uint32_t mask,
 				       uint32_t value)
 {
 	io_reg_update_bits((uint32_t)((char *)afe->base + reg), mask, value);
-	tr_dbg(&afedrv_tr, "u_reg:0x%x, value:0x%x\n", reg, value);
+	tr_info(&afedrv_tr, "u_reg:0x%x, value:0x%x\n", reg, value);
 }
 
 static int afe_memif_set_channel(struct mtk_base_afe *afe, int id, unsigned int channel)
@@ -54,11 +54,15 @@ static int afe_memif_set_channel(struct mtk_base_afe *afe, int id, unsigned int 
 	struct mtk_base_afe_memif *memif = &afe->memif[id];
 	unsigned int mono;
 
+	tr_info(&afedrv_tr, "write ch_num_reg:0x%x\n", memif->data->ch_num_reg);
+
 	if (memif->data->ch_num_reg >= 0) {
 		afe_reg_update_bits(afe, memif->data->ch_num_reg,
 				    memif->data->ch_num_maskbit << memif->data->ch_num_shift,
 				    channel << memif->data->ch_num_shift);
 	}
+
+	tr_info(&afedrv_tr, "write quad_ch_mask:0x%x\n", memif->data->quad_ch_mask);
 
 	if (memif->data->quad_ch_mask) {
 		unsigned int quad_ch = (channel == 4);
@@ -70,10 +74,15 @@ static int afe_memif_set_channel(struct mtk_base_afe *afe, int id, unsigned int 
 
 	mono = (bool)memif->data->mono_invert ^ (channel == 1);
 
+
+	tr_info(&afedrv_tr, "write int_odd_flag_reg:0x%x\n", memif->data->int_odd_flag_reg);
+
 	if (memif->data->int_odd_flag_reg > 0)
 		afe_reg_update_bits(afe, memif->data->int_odd_flag_reg,
 				    1 << memif->data->int_odd_flag_shift,
 				    mono << memif->data->int_odd_flag_shift);
+
+	tr_info(&afedrv_tr, "write mono_reg:0x%x\n", memif->data->mono_reg);
 
 	if (memif->data->mono_reg > 0 && memif->data->mono_shift >= 0)
 		afe_reg_update_bits(afe, memif->data->mono_reg,
@@ -92,6 +101,8 @@ static int afe_memif_set_rate(struct mtk_base_afe *afe, int id, unsigned int rat
 		tr_err(&afedrv_tr, "invalid fs:%d\n", fs);
 		return -EINVAL;
 	}
+
+	tr_info(&afedrv_tr, "write mono_reg:0x%x\n", memif->data->mono_reg);
 
 	afe_reg_update_bits(afe, memif->data->fs_reg,
 			    memif->data->fs_maskbit << memif->data->fs_shift,
@@ -165,7 +176,7 @@ int afe_memif_set_addr(struct mtk_base_afe *afe, int id, unsigned int dma_addr,
 
 	memif->afe_addr = phys_buf_addr;
 	memif->buffer_size = dma_bytes;
-	tr_dbg(&afedrv_tr, "dma_addr:0x%x, size:%u\n", dma_addr, dma_bytes);
+	tr_info(&afedrv_tr, "dma_addr:0x%x, size:%u\n", dma_addr, dma_bytes);
 	/* start */
 	afe_reg_write(afe, memif->data->reg_ofs_base, phys_buf_addr);
 	/* end */
@@ -276,13 +287,13 @@ int afe_dai_get_config(struct mtk_base_afe *afe, int id, unsigned int *channel, 
 		tr_err(&afedrv_tr, "afe_dai_get_config , invalid id:%d\n", id);
 		return -EINVAL;
 	}
-	dai = &afe->dais[id];
+	dai = &afe->dais[id];  // important
 
 	*channel = dai->channel;
 	*rate = dai->rate;
 	*format = dai->format;
 
-	tr_info(&afedrv_tr, "dai:%d get: format:%d, rate:%d, channel:%d\n", id, *format, *rate,
+	tr_info(&afedrv_tr, "dai->id:%d get: format:%d, rate:%d, channel:%d\n", id, *format, *rate,
 		*channel);
 
 	return 0;
@@ -358,7 +369,7 @@ int afe_probe(struct mtk_base_afe *afe)
 	afe->irq_fs = platform->irq_fs;
 	if (!afe->afe_fs)
 		return -EINVAL;
-	tr_dbg(&afedrv_tr, "afe_base:0x%x\n", afe->base);
+	tr_info(&afedrv_tr, "afe_base:0x%x\n", afe->base);
 	/* TODO how to get the memif number, how to sync with dmac lib */
 	afe->memifs_size = platform->memif_size;
 	afe->memif = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
@@ -366,8 +377,12 @@ int afe_probe(struct mtk_base_afe *afe)
 	if (!afe->memif)
 		return -ENOMEM;
 
-	for (i = 0; i < afe->memifs_size; i++)
+	tr_info(&afedrv_tr, "afe->memifs_size: %d\n", afe->memifs_size); // check MT8196_MEMIF_NUM
+
+	for (i = 0; i < afe->memifs_size; i++) {
 		afe->memif[i].data = &platform->memif_datas[i];
+		tr_info(&afedrv_tr, "afe->memif[%d].data: %p\n", i, afe->memif[i].data);
+	}
 
 	/* TODO how to get the dai number, how to sync with dai lib*/
 	afe->dais_size = platform->dais_size;
@@ -376,12 +391,17 @@ int afe_probe(struct mtk_base_afe *afe)
 	if (!afe->dais)
 		goto err_alloc_memif;
 
+	tr_info(&afedrv_tr, "afe->dais_size: %d\n", afe->dais_size);  // check MT8196_DAI_NUM
+
 	/* TODO how to get the irq number */
 	afe->irqs_size = platform->irqs_size;
 	afe->irqs = rzalloc(SOF_MEM_ZONE_RUNTIME_SHARED, 0, SOF_MEM_CAPS_RAM,
 			    sizeof(struct mtk_base_afe_irq) * afe->irqs_size);
 	if (!afe->irqs)
 		goto err_alloc_dais;
+
+	tr_info(&afedrv_tr, "afe->irqs_size: %d\n", afe->irqs_size);  // check irq
+
 
 	for (i = 0; i < afe->irqs_size; i++)
 		afe->irqs[i].irq_data = &platform->irq_datas[i];
@@ -406,7 +426,7 @@ void afe_remove(struct mtk_base_afe *afe)
 
 	if (afe->ref_count < 0) {
 		afe->ref_count = 0;
-		tr_dbg(&afedrv_tr, "afe ref_count < 0, :%d\n", afe->ref_count);
+		tr_info(&afedrv_tr, "afe ref_count < 0, :%d\n", afe->ref_count);
 		return;
 	}
 

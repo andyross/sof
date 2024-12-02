@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright(c) 2022 MediaTek. All rights reserved.
+ *
+ * Author: Allen-KH Cheng <allen-kh.cheng@mediatek.com>
+ *         Tinghan Shen <tinghan.shen@mediatek.com>
+ */
+
+#include <rtos/interrupt.h>
+#include <rtos/spinlock.h>
+#include <sof/common.h>
+#include <sof/drivers/afe-memif.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/uuid.h>
+#include <rtos/sof.h>
+#include <platform/printf.h>
+#include <mt8196-afe-reg.h>
+#include <mt8196-afe-common.h>
+
+SOF_DEFINE_REG_UUID(mtk_dma);
+DECLARE_TR_CTX(mtk_dma_tr, SOF_UUID(mtk_dma_uuid), LOG_LEVEL_INFO);
+
+extern const struct dma_ops dummy_dma_ops;
+
+static SHARED_DATA struct dma dma[PLATFORM_NUM_DMACS] = {
+{
+	.plat_data = {
+		.id		= DMA_ID_HOST,
+		.dir		= DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
+		.devs		= DMA_DEV_HOST,
+		.channels	= 16,
+	},
+	.ops	= &dummy_dma_ops,
+},
+{
+	.plat_data = {
+		.id		= DMA_ID_AFE_MEMIF,
+		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
+		.devs		= DMA_DEV_AFE_MEMIF,
+		.base		= AFE_BASE_ADDR,
+		.channels	= MT8196_MEMIF_NUM,
+	},
+	.ops	= &memif_ops,
+},
+
+};
+
+static const struct dma_info lib_dma = {
+	.dma_array = cache_to_uncache_init((struct dma *)dma),
+	.num_dmas = ARRAY_SIZE(dma)
+};
+
+int dmac_init(struct sof *sof)
+{
+	int i;
+
+	/* early lock initialization for ref counting */
+	for (i = 0; i < ARRAY_SIZE(dma); i++)
+		k_spinlock_init(&dma[i].lock);
+
+	sof->dma_info = &lib_dma;
+	
+	tr_info(&mtk_dma_tr, "######dma_dummy: %p, memif dma: %p ######\n", &dma[0], &dma[1]);
+
+	return 0;
+}

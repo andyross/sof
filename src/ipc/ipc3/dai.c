@@ -41,6 +41,9 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 	int channel;
 	int handshake;
 
+	comp_info(dev, "dai_config_dma_channel() config->type = %d dai->direction = %d dd->stream_id = %d",
+	  config->type, dai->direction, dd->stream_id);
+
 	assert(config);
 
 	switch (config->type) {
@@ -97,6 +100,7 @@ int dai_config_dma_channel(struct dai_data *dd, struct comp_dev *dev, const void
 		handshake = dai_get_handshake(dd->dai, dai->direction,
 					      dd->stream_id);
 		channel = AFE_HS_GET_CHAN(handshake);
+		comp_info(dev, "######handshake= 0x%x, channel: %d",handshake, channel);
 		break;
 	default:
 		/* other types of DAIs not handled for now */

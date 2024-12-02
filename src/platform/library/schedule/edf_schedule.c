@@ -10,6 +10,8 @@
 #include <sof/schedule/edf_schedule.h>
 #include <rtos/wait.h>
 #include <stdlib.h>
+#include <platform/printf.h>
+
 
  /* scheduler testbench definition */
 

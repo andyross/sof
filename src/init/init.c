@@ -44,6 +44,11 @@
 #endif
 #include <sof/lib/ams.h>
 
+#ifdef CONFIG_MEDIATEK
+#include <sof/drivers/uart.h>
+#include <platform/printf.h>
+#endif
+
 LOG_MODULE_REGISTER(init, CONFIG_SOF_LOG_LEVEL);
 
 /* main firmware context */

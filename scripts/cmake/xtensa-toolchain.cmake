@@ -49,7 +49,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 # xt toolchain only partially follows gcc convention
 if(TOOLCHAIN STREQUAL "xt")
 	set(XCC 1)
-	set(CMAKE_C_COMPILER ${CROSS_COMPILE}xcc)
+	set(CMAKE_C_COMPILER ${CROSS_COMPILE}clang)
 else()
 	set(CMAKE_C_COMPILER ${CROSS_COMPILE}gcc)
 endif()

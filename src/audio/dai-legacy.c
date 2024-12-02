@@ -34,6 +34,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "copier/dai_copier.h"
+#include <platform/printf.h>
 
 static const struct comp_driver comp_dai;
 
@@ -189,7 +190,7 @@ static struct comp_dev *dai_new(const struct comp_driver *drv,
 	struct dai_data *dd;
 	int ret;
 
-	comp_cl_dbg(&comp_dai, "dai_new()");
+	comp_cl_info(&comp_dai, "dai_new()");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
@@ -258,7 +259,7 @@ int dai_common_get_hw_params(struct dai_data *dd, struct comp_dev *dev,
 {
 	int ret;
 
-	comp_dbg(dev, "dai_hw_params()");
+	comp_info(dev, "dai_hw_params()");
 
 	/* fetching hw dai stream params */
 	ret = dai_get_hw_params(dd->dai, params, dir);
@@ -284,6 +285,8 @@ static int dai_comp_get_hw_params(struct comp_dev *dev,
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
+	comp_info(dev, "dai_comp_get_hw_params()");
+
 	return dai_common_get_hw_params(dd, dev, params, dir);
 }
 
@@ -293,7 +296,7 @@ static int dai_comp_hw_params(struct comp_dev *dev,
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "dai_comp_hw_params()");
+	comp_info(dev, "dai_comp_hw_params()");
 
 	/* configure hw dai stream params */
 	ret = dai_hw_params(dd->dai, params);
@@ -472,7 +475,7 @@ int dai_common_params(struct dai_data *dd, struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "dai_params()");
+	comp_info(dev, "dai_params()");
 
 	/* configure dai_data first */
 	err = ipc_dai_data_config(dd, dev);
@@ -592,7 +595,7 @@ static int dai_params(struct comp_dev *dev, struct sof_ipc_stream_params *params
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	comp_dbg(dev, "dai_params()");
+	comp_info(dev, "dai_params()");
 
 	return dai_common_params(dd, dev, params);
 }

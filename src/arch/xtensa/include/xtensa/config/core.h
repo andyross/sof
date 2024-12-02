@@ -54,6 +54,15 @@
 
 #endif
 
+/*This define used by the new 2023 xt-clang toolchain */
+#ifndef __UINT32_C
+#define __UINT32_C(x) x ## U
+#endif
+
+#ifndef UINT32_C
+#define UINT32_C(x) __UINT32_C(x)
+#endif
+
 /*  CONFIGURATION INDEPENDENT DEFINITIONS:  */
 #ifdef __XTENSA__
 #include <xtensa/hal.h>

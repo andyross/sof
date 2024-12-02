@@ -72,6 +72,7 @@ static void validate_memory(void *ptr, size_t size)
 }
 #endif
 
+#if 0
 /* total size of block */
 static inline uint32_t block_get_size(struct block_map *map)
 {
@@ -92,7 +93,7 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 
 	return size;
 }
-
+#endif
 #if CONFIG_DEBUG_BLOCK_FREE
 static void write_pattern(struct mm_heap *heap_map, int heap_depth,
 			  uint8_t pattern)

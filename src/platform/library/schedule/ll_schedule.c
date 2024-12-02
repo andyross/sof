@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <stdint.h>
+#include <platform/printf.h>
+
 
  /* scheduler testbench definition */
 

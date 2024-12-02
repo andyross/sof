@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
@@ -146,7 +147,7 @@ static const struct comp_driver *get_drv(struct sof_ipc_comp *comp)
 
 out:
 	if (drv)
-		tr_dbg(&comp_tr, "get_drv(), found driver type %d, uuid %pU",
+		tr_info(&comp_tr, "get_drv(), found driver type %d, uuid %pU",
 		       drv->type, drv->tctx->uuid_p);
 
 	return drv;
@@ -664,6 +665,8 @@ int ipc_comp_new(struct ipc *ipc, ipc_comp *_comp)
 		rfree(cd);
 		return -ENOMEM;
 	}
+	tr_info(&ipc_tr, "icd : %p", icd);
+
 	icd->cd = cd;
 	icd->type = COMP_TYPE_COMPONENT;
 	icd->core = comp->core;

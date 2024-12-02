@@ -13,6 +13,7 @@
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
+#include <platform/printf.h>
 
 LOG_MODULE_DECLARE(ipc, CONFIG_SOF_LOG_LEVEL);
 
@@ -186,6 +187,8 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.elem_array.elems = &elem;
 	config.elem_array.count = 1;
 
+	tr_info(&ipc_tr, "ring->phy_addr: 0x%x, size: 0x%x\n", ring->phy_addr, elem.size);
+
 	ret = dma_set_config_legacy(chan, &config);
 	if (ret < 0) {
 		tr_err(&ipc_tr, "ipc_get_page_descriptors(): dma_set_config() failed");
@@ -217,6 +220,8 @@ int ipc_process_host_buffer(struct ipc *ipc,
 
 	data_host_buffer = ipc_platform_get_host_buffer(ipc);
 	dma_sg_init(elem_array);
+	
+	tr_info(&ipc_tr,"ring->phy_addr: 0x%x, pages: 0x%x, size> 0x%x\n",ring->phy_addr, ring->pages, ring->size);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = ipc_get_page_descriptors(data_host_buffer->dmac,

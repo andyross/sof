@@ -45,6 +45,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
 
 LOG_MODULE_REGISTER(dummy_dma, CONFIG_SOF_LOG_LEVEL);
 
@@ -79,6 +80,7 @@ static ssize_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
 	int ret;
 	uintptr_t rptr, wptr;
 	size_t orig_size, remaining_size, copy_size;
+	//DBG("mt8196: %s [%d]\n", __func__, __LINE__);
 
 	if (bytes == 0)
 		return 0;
@@ -103,7 +105,7 @@ static ssize_t dummy_dma_copy_crt_elem(struct dma_chan_pdata *pdata,
 	 * On capture this should be safe as host.c does a writeback before
 	 * triggering the DMA.
 	 */
-	dcache_invalidate_region((void *)rptr, copy_size);
+	//dcache_invalidate_region((void *)rptr, copy_size);
 
 	/* Perform the copy, being careful if we overflow the elem */
 	ret = memcpy_s((void *)wptr, remaining_size, (void *)rptr, copy_size);
@@ -225,6 +227,8 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 {
 	k_spinlock_key_t key;
 	int i;
+	
+	tr_info(&ddma_tr, "req_chan: %d", req_chan);
 
 	key = k_spin_lock(&dma->lock);
 	for (i = 0; i < dma->plat_data.channels; i++) {
@@ -248,6 +252,7 @@ static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
 static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
 {
 	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
+	tr_info(&ddma_tr, "dummy_dma_channel_put_unlocked\n");
 
 	/* Reset channel state */
 	notifier_unregister_all(NULL, channel);
@@ -273,6 +278,7 @@ static void dummy_dma_channel_put_unlocked(struct dma_chan_data *channel)
 static void dummy_dma_channel_put(struct dma_chan_data *channel)
 {
 	k_spinlock_key_t key;
+	tr_info(&ddma_tr, "dummy_dma_channel_put\n");
 
 	key = k_spin_lock(&channel->dma->lock);
 	dummy_dma_channel_put_unlocked(channel);
@@ -282,24 +288,32 @@ static void dummy_dma_channel_put(struct dma_chan_data *channel)
 /* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_start(struct dma_chan_data *channel)
 {
+	tr_info(&ddma_tr, "dummy_dma_start\n");
+
 	return 0;
 }
 
 /* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_release(struct dma_chan_data *channel)
 {
+	tr_info(&ddma_tr, "dummy_dma_release\n");
+
 	return 0;
 }
 
 /* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_pause(struct dma_chan_data *channel)
 {
+	tr_info(&ddma_tr, "dummy_dma_pause\n");
+
 	return 0;
 }
 
 /* Since copies are synchronous, the triggers do nothing */
 static int dummy_dma_stop(struct dma_chan_data *channel)
 {
+	tr_info(&ddma_tr, "dummy_dma_stop\n");
+
 	return 0;
 }
 
@@ -309,6 +323,7 @@ static int dummy_dma_status(struct dma_chan_data *channel,
 			    uint8_t direction)
 {
 	struct dma_chan_pdata *ch = dma_chan_get_data(channel);
+	tr_info(&ddma_tr, "dummy_dma_status()\n");	
 
 	status->state = channel->status;
 	status->flags = 0; /* TODO What flags should be put here? */
@@ -414,6 +429,8 @@ static int dummy_dma_probe(struct dma *dma)
 {
 	struct dma_chan_pdata *chanp;
 	int i;
+	
+	tr_info(&ddma_tr, "dummy_dma_probe()\n");
 
 	if (dma->chan) {
 		tr_err(&ddma_tr, "dummy-dmac %d already created!",
@@ -464,7 +481,7 @@ static int dummy_dma_probe(struct dma *dma)
  */
 static int dummy_dma_remove(struct dma *dma)
 {
-	tr_dbg(&ddma_tr, "dummy_dma %d -> remove", dma->plat_data.id);
+	tr_info(&ddma_tr, "dummy_dma %d -> remove", dma->plat_data.id);
 	if (!dma->chan)
 		return 0;
 
@@ -488,6 +505,8 @@ static int dummy_dma_get_data_size(struct dma_chan_data *channel,
 {
 	struct dma_chan_pdata *pdata = dma_chan_get_data(channel);
 	uint32_t size = dummy_dma_compute_avail_data(pdata);
+	
+	tr_info(&ddma_tr, "direction: 0x%x", channel->direction);
 
 	switch (channel->direction) {
 	case DMA_DIR_HMEM_TO_LMEM:
@@ -513,7 +532,9 @@ static int dummy_dma_interrupt(struct dma_chan_data *channel,
 
 static int dummy_dma_get_attribute(struct dma *dma, uint32_t type,
 				   uint32_t *value)
-{
+{	
+	tr_info(&ddma_tr, " type: 0x%x\n", type);
+
 	switch (type) {
 	case DMA_ATTR_BUFFER_ALIGNMENT:
 	case DMA_ATTR_COPY_ALIGNMENT:

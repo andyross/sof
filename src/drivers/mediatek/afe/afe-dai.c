@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <platform/printf.h>
 
 SOF_DEFINE_REG_UUID(afe_dai);
 
@@ -30,6 +31,7 @@ DECLARE_TR_CTX(afe_dai_tr, SOF_UUID(afe_dai_uuid), LOG_LEVEL_INFO);
 
 static int afe_dai_drv_trigger(struct dai *dai, int cmd, int direction)
 {
+	dai_info(dai, "afe_dai_drv_trigger()");
 	return 0;
 }
 
@@ -38,6 +40,7 @@ static int afe_dai_drv_set_config(struct dai *dai, struct ipc_config_dai *common
 {
 	const struct sof_ipc_dai_config *config = spec_config;
 	struct mtk_base_afe *afe = dai_get_drvdata(dai);
+	dai_info(dai, "afe_dai_drv_set_config()");
 
 	return afe_dai_set_config(afe,
 				  dai->index,
@@ -52,6 +55,7 @@ static int afe_dai_drv_get_hw_params(struct dai *dai, struct sof_ipc_stream_para
 	int ret;
 	struct mtk_base_afe *afe = dai_get_drvdata(dai);
 	unsigned int channel, rate, format;
+	dai_info(dai, "afe_dai_drv_get_hw_params()");
 
 	ret = afe_dai_get_config(afe, dai->index, &channel, &rate, &format);
 	if (ret < 0)
@@ -68,7 +72,6 @@ static int afe_dai_drv_get_hw_params(struct dai *dai, struct sof_ipc_stream_para
 static int afe_dai_drv_probe(struct dai *dai)
 {
 	struct mtk_base_afe *afe = afe_get();
-
 	dai_info(dai, "afe_dai_probe()");
 
 	if (dai_get_drvdata(dai))
@@ -82,12 +85,13 @@ static int afe_dai_drv_probe(struct dai *dai)
 static int afe_dai_drv_remove(struct dai *dai)
 {
 	dai_info(dai, "afe_dai_remove()");
-
 	return 0;
 }
 
 static int afe_dai_drv_get_handshake(struct dai *dai, int direction, int stream_id)
 {
+	dai_info(dai, "afe_dai_drv_get_handshake(), direction: %d, stream_id: %d\n", direction, stream_id);
+
 	return (int)dai->plat_data.fifo[0].handshake;
 }
 

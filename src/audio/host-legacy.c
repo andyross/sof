@@ -571,7 +571,7 @@ static struct comp_dev *host_new(const struct comp_driver *drv,
 	const struct ipc_config_host *ipc_host = spec;
 	int ret;
 
-	comp_cl_dbg(&comp_host, "host_new()");
+	comp_cl_info(&comp_host, "host_new()");
 
 	dev = comp_alloc(drv, sizeof(*dev));
 	if (!dev)
