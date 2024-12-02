@@ -81,11 +81,11 @@ void intc_init(void)
 
 void intc_irq_unmask(IRQn_Type irq)
 {
-	uint32_t word, group;
+	uint32_t word; //, group;
 
 	if (irq < IRQ_MAX_CHANNEL && intc_desc.irqs[irq].group < INTC_GRP_NUM) {
 		word = INTC_WORD(irq);
-		group = intc_desc.irqs[irq].group;
+		//group = intc_desc.irqs[irq].group;
 		io_reg_update_bits(INTC_IRQ_EN(word), INTC_BIT(irq), INTC_BIT(irq));
 		//xt_ints_on(1 << grp2hifi_irq_map[group]);
 	} else
