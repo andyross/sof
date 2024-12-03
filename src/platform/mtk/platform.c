@@ -29,15 +29,15 @@ void mtk_dai_init(struct sof *sof);
  * protocol rev?  Come on!
  */
 #ifdef CONFIG_SOC_MT8196
-#define MBOX_CMD_TO_HOST MBOX0
-#define MBOX_RPL_TO_HOST MBOX1
-#define MBOX_CMD_TO_DSP MBOX1
-#define MBOX_RPL_TO_DSP MBOX0
+#define MBOX_CMD_TO_HOST MBOX1
+#define MBOX_RPL_TO_DSP MBOX1
+#define MBOX_CMD_TO_DSP MBOX0
+#define MBOX_RPL_TO_HOST MBOX0
 #else
 #define MBOX_CMD_TO_HOST MBOX0
-#define MBOX_RPL_TO_HOST MBOX1
-#define MBOX_CMD_TO_DSP MBOX0
 #define MBOX_RPL_TO_DSP MBOX1
+#define MBOX_CMD_TO_DSP MBOX0
+#define MBOX_RPL_TO_HOST MBOX1
 #endif
 
 /* Use the same UUID as in "ipc-zephyr.c", which is actually an Intel driver */
@@ -99,7 +99,7 @@ int platform_ipc_init(struct ipc *ipc)
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
-	mtk_adsp_mbox_set_handler(MBOX_CMD_TO_DSP, 1, mbox_cmd_fn, NULL);
+	mtk_adsp_mbox_set_handler(MBOX_CMD_TO_DSP, 0, mbox_cmd_fn, NULL);
 	mtk_adsp_mbox_set_handler(MBOX_RPL_TO_DSP, 1, mbox_reply_fn, NULL);
 	return 0;
 }
