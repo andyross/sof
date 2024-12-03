@@ -35,6 +35,8 @@
 #include <zephyr/logging/log.h>
 #endif
 
+#include "mtprintf.h"
+
 struct sof;
 struct trace;
 struct tr_ctx;
@@ -305,7 +307,8 @@ do {									\
 		       ##__VA_ARGS__);					\
 } while (0)
 #else
-#define _log_nodict(atomic, n_args, lvl, format, ...)
+#define _log_nodict(atomic, n_args, lvl, format, ...) \
+	mtprintf("[%d] " format "\n", lvl, ##__VA_ARGS__);
 #endif
 
 #endif /* CONFIG_LIBRARY */
