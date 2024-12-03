@@ -276,10 +276,30 @@ static const struct afe_cfg afes[] = {
 
 extern const struct dma_ops memif_ops;
 
+/* FIXME: this field is mostly dead code, nothing outside the legacy
+ * platform layers uses it beyond logging and (maybe?) assuming
+ * uniqueness.
+ */
+enum dma_id {
+	DMA_ID_AFE_MEMIF,
+	DMA_ID_HOST,
+};
+
+extern const struct dma_ops dummy_dma_ops;
+
 static struct dma mtk_dma[] = {
 	{
 		.plat_data = {
-			.id = 0, // 0 == DMA_ID_AFE_MEMIF
+			.id		= DMA_ID_HOST,
+			.dir		= DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
+			.devs		= DMA_DEV_HOST,
+			.channels	= 16,
+		},
+		.ops	= &dummy_dma_ops,
+	},
+	{
+		.plat_data = {
+			.id =  DMA_ID_AFE_MEMIF,
 			.dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
 			.devs = DMA_DEV_AFE_MEMIF,
 			.base = MTK_AFE_BASE,
