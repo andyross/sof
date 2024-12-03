@@ -13,6 +13,10 @@ config CACHE_MANAGEMENT
 config XTENSA_CCOUNT_HZ
 	default 800000000
 
+# Assume =y with Zephyr builds
+config ZEPHYR_LOG
+	default y
+
 # SOF code assumes system work queue and other system
 # wide threads are pinned to a single core.
 # CPU_MASK_PIN_ONLY must be set for all SOF builds.

@@ -30,6 +30,7 @@ static inline int interrupt_register(uint32_t irq, void(*handler)(void *arg), vo
 	return arch_irq_connect_dynamic(irq, 0, (void (*)(const void *))handler,
 					arg, 0);
 #else
+	LOG_MODULE_DECLARE(zephyr, CONFIG_SOF_LOG_LEVEL);
 	tr_err(&zephyr_tr, "Cannot register handler for IRQ %u: dynamic IRQs are disabled",
 		irq);
 	return -EOPNOTSUPP;

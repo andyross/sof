@@ -105,6 +105,7 @@ static inline int comp_dai_get_hw_params(struct comp_dev *dev,
 					 struct sof_ipc_stream_params *params,
 					 int dir)
 {
+	LOG_MODULE_DECLARE(component, CONFIG_SOF_LOG_LEVEL);
 	comp_info(dev, "comp_dai_get_hw_params()\n");
 
 	if (dev->drv->ops.dai_get_hw_params)
