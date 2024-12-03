@@ -971,7 +971,10 @@ static int ipc_glb_trace_message(uint32_t header)
 {
 	/* traces are disabled - CONFIG_TRACE is not set */
 
-	return -EINVAL;
+	// FIXME: this supresses a kernel error on load, but it's not
+	// clear to me if it's fatal or not.  There's no way for the
+	// firmware itself to declare "dtrace not supported"
+	return 0; //-EINVAL;
 }
 #endif
 
