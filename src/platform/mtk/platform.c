@@ -93,9 +93,35 @@ static void mbox_reply_fn(const struct device *mbox, void *arg)
 	ipc_get()->is_notification_pending = false;
 }
 
+/* "Host Page Table" support.  This isn't really a page table, it's a
+ * packed array of PPN addresses (basically a scatter/gather list)
+ * used to configure the buffer used for dummy_dma, which is a "DMA"
+ * driver that works by directly copying data in shared memory.  And
+ * somewhat confusingly, it's itself configured at runtime by "DMA"
+ * over the same mechanism (instead of e.g. by a IPC command, which
+ * would fit just fine!).  All of this is degenerate with MTK anyway,
+ * because the actual addresses being passed are in a DRAM region
+ * dedicated for the purpose and are AFAICT guaranteed contiguous.
+ *
+ * Note: the 256 byte page table size is fixed by protocol in the
+ * kernel driver, but here in SOF it's always been a platform symbol.
+ * But it's not tunable!  Don't touch it.
+ */
+static uint8_t hostbuf_ptable[256];
+static struct ipc_data_host_buffer mtk_host_buffer;
+
+struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
+{
+	return &mtk_host_buffer;
+}
+
 /* Called out of ipc_init(), which is called out of platform_init() below */
 int platform_ipc_init(struct ipc *ipc)
 {
+	mtk_host_buffer.page_table = hostbuf_ptable;
+	mtk_host_buffer.dmac = dma_get(DMA_DIR_HMEM_TO_LMEM, 0, DMA_DEV_HOST,
+				       DMA_ACCESS_SHARED);
+
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
@@ -118,7 +144,7 @@ void interrupt_clear_mask(uint32_t irq, uint32_t mask)
 {
 	/* This is required out of dma_multi_chan_domain but nothing
 	 * defines it in Zephyr builds.  Stub with a noop here,
-	 * knowing that MTK DMA devices don't have interrupts.
+	 * knowing that MTK "DMA" "devices" don't have interrupts.
 	 */
 }
 
@@ -146,8 +172,8 @@ int platform_init(struct sof *sof)
 {
 	clocks_init(sof);
 	sof->platform_timer_domain = zephyr_domain_init(PLATFORM_DEFAULT_CLOCK);
-	ipc_init(sof);
 	mtk_dai_init(sof);
+	ipc_init(sof);
 	scheduler_init_edf();
 	scheduler_init_ll(sof->platform_timer_domain);
 	sof->platform_dma_domain =

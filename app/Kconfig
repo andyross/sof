@@ -21,6 +21,9 @@ config ZEPHYR_LOG
 config SCHEDULE_DMA_MULTI_CHANNEL
 	default y if SOC_FAMILY_MTK
 
+config HOST_PTABLE
+	default y if SOC_FAMILY_MTK
+
 # SOF code assumes system work queue and other system
 # wide threads are pinned to a single core.
 # CPU_MASK_PIN_ONLY must be set for all SOF builds.
