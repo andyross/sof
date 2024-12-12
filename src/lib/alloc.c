@@ -94,6 +94,7 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	return size;
 }
 #endif
+
 #if CONFIG_DEBUG_BLOCK_FREE
 static void write_pattern(struct mm_heap *heap_map, int heap_depth,
 			  uint8_t pattern)
@@ -555,7 +556,7 @@ static void free_block(void *ptr)
 #endif
 }
 
-#if CONFIG_TRACE
+#if defined(CONFIG_TRACE) && !defined(__ZEPHYR__)
 void heap_trace(struct mm_heap *heap, int size)
 {
 	struct block_map *current_map;
