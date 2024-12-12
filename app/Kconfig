@@ -17,6 +17,10 @@ config XTENSA_CCOUNT_HZ
 config ZEPHYR_LOG
 	default y
 
+# Used to be selected by the platform, find a home
+config SCHEDULE_DMA_MULTI_CHANNEL
+	default y if SOC_FAMILY_MTK
+
 # SOF code assumes system work queue and other system
 # wide threads are pinned to a single core.
 # CPU_MASK_PIN_ONLY must be set for all SOF builds.

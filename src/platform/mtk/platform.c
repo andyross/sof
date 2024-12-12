@@ -114,6 +114,14 @@ static int set_cpuclk(int clock, int hz)
 	return clock == 0 && hz == CONFIG_XTENSA_CCOUNT_HZ ? 0 : -EINVAL;
 }
 
+void interrupt_clear_mask(uint32_t irq, uint32_t mask)
+{
+	/* This is required out of dma_multi_chan_domain but nothing
+	 * defines it in Zephyr builds.  Stub with a noop here,
+	 * knowing that MTK DMA devices don't have interrupts.
+	 */
+}
+
 /* Dummy CPU clock driver that supports one known frequency.  This
  * hardware has clock scaling support, but it hasn't historically been
  * exercised so we have nothing to test against.
@@ -142,6 +150,10 @@ int platform_init(struct sof *sof)
 	mtk_dai_init(sof);
 	scheduler_init_edf();
 	scheduler_init_ll(sof->platform_timer_domain);
+	sof->platform_dma_domain =
+		dma_multi_chan_domain_init(&sof->dma_info->dma_array[0],
+					   sof->dma_info->num_dmas,
+					   PLATFORM_DEFAULT_CLOCK, false);
 	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 	return 0;
 }
