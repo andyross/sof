@@ -244,6 +244,117 @@ struct afe_cfg {
 	struct afe_bitfld ch_num;
 };
 
+/* Converts the DTS_derived afe_cfg struct to a runtime memif_data for
+ * use by the legacy driver.  This is temporary, pending a
+ * Zephyrization port that will get the driver using the config struct
+ * directly.
+ */
+static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *dst)
+{
+
+	dst->id = src->dai_id;
+	dst->name = src->afe_name; /* Assumes it's a string literal! */
+	dst->reg_ofs_base = src->base.lo;
+	dst->reg_ofs_cur = src->cur.lo;
+	dst->reg_ofs_end = src->end.lo;
+	dst->reg_ofs_base_msb = src->base.hi;
+	dst->reg_ofs_cur_msb = src->cur.hi;
+	dst->reg_ofs_end_msb = src->end.hi;
+	dst->mono_invert = src->mono_invert;
+
+	/* Some preprocessor trickery to help mapping the regularized
+	 * DTS data to the "almost but not quite
+	 * convention-conforming" original naming.  Mostly just some
+	 * naming quirks.  The only semantic differences are that the
+	 * register addresses in DTS become offsets from MTK_AFE_BASE,
+	 * that default/unset register addresses are stored as -1 and
+	 * not NULL.
+	 */
+#define REGCVT(R) ((R) ? (R) - MTK_AFE_BASE : -1)
+
+#define COPYBIT(S, Dr, Ds) do {		\
+	dst->Dr = REGCVT(src->S.reg);	\
+	dst->Ds = src->S.shift;		\
+	} while (0)
+
+#define COPYFLD(S, Dr, Ds, Dm) do {	\
+	COPYBIT(S, Dr, Ds);		\
+	dst->Dm = BIT(src->S.bits) - 1;	\
+	} while (0)
+
+#define COPY2(F) COPYBIT(F, F##_reg, F##_shift)
+#define COPY3(F) COPYFLD(F, F##_reg, F##_shift, F##_mask)
+
+	COPYFLD(fs, fs_reg, fs_shift, fs_maskbit);
+	COPY2(mono);
+	COPY3(quad_ch);
+	COPYBIT(int_odd, int_odd_flag_reg, int_odd_flag_shift);
+	COPY2(enable);
+	COPY2(hd);
+	//COPYBIT(hd_align, hd_align_reg, hd_align_mshift);
+	COPY2(msb);
+	COPY2(msb2);
+	COPY2(agent_disable);
+	COPYFLD(ch_num, ch_num_reg, ch_num_shift, ch_num_maskbit);
+	//COPY3(pbuf);
+	//COPY3(minlen);
+
+#undef REGCVT
+#undef COPYBIT
+#undef COPYFLD
+#undef COPY2
+#undef COPY3
+}
+
+/* Validation utility, compares a converted memif_data struct with an
+ * original/upstream one. Note that some mismatches are expected and
+ * benign, as unused/default values in the originals aren't always
+ * represented the same way.
+ */
+static void cfg_cmp(const struct mtk_base_memif_data *a, struct mtk_base_memif_data *b)
+{
+#define CHK(F) if(a->F != b->F) printk(" !!%s: 0x%x != 0x%x\n", #F, a->F, b->F)
+	CHK(id);
+	CHK(reg_ofs_base);
+	CHK(reg_ofs_cur);
+	CHK(reg_ofs_end);
+	CHK(reg_ofs_base_msb);
+	CHK(reg_ofs_cur_msb);
+	CHK(reg_ofs_end_msb);
+	CHK(fs_reg);
+	CHK(fs_shift);
+	CHK(fs_maskbit);
+	CHK(mono_reg);
+	CHK(mono_shift);
+	CHK(mono_invert);
+	CHK(quad_ch_reg);
+	CHK(quad_ch_mask);
+	CHK(quad_ch_shift);
+	CHK(int_odd_flag_reg);
+	CHK(int_odd_flag_shift);
+	CHK(enable_reg);
+	CHK(enable_shift);
+	CHK(hd_reg);
+	CHK(hd_shift);
+	CHK(hd_align_reg);
+	CHK(hd_align_mshift);
+	CHK(msb_reg);
+	CHK(msb_shift);
+	CHK(msb2_reg);
+	CHK(msb2_shift);
+	CHK(agent_disable_reg);
+	CHK(agent_disable_shift);
+	CHK(ch_num_reg);
+	CHK(ch_num_shift);
+	CHK(ch_num_maskbit);
+	CHK(pbuf_reg);
+	CHK(pbuf_mask);
+	CHK(pbuf_shift);
+	CHK(minlen_reg);
+	CHK(minlen_mask);
+	CHK(minlen_shift);
+}
+
 /* Some properties may be skipped/defaulted in DTS */
 #define COND_PROP(n, prop) \
 	IF_ENABLED(DT_NODE_HAS_PROP(n, prop), (.prop = DT_PROP(n, prop),))
@@ -271,6 +382,20 @@ struct afe_cfg {
 static const struct afe_cfg afes[] = {
 	DT_FOREACH_STATUS_OKAY(mediatek_afe, GENAFE)
 };
+
+static void afe_check(void)
+{
+	int n = ARRAY_SIZE(mtk_memif_data);
+
+	__ASSERT_NO_MSG(ARRAY_SIZE(afes) == n);
+
+	for (int i = 0; i < n; i++) {
+		struct mtk_base_memif_data tmp;
+
+		cfg_convert(&afes[i], &tmp);
+		cfg_cmp(&mtk_memif_data[i], &tmp);
+	}
+}
 
 ////////////////////////////////////////////////////////////////////////
 
