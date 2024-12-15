@@ -248,29 +248,17 @@ struct afe_cfg {
  * use by the legacy driver.  This is temporary, pending a
  * Zephyrization port that will get the driver using the config struct
  * directly.
+ *
+ * Note the preprocessor trickery to help mapping the regularized DTS
+ * data to the "almost but not quite convention-conforming" original
+ * naming.  Mostly just some naming quirks.  The only semantic
+ * differences are that the register addresses in DTS become offsets
+ * from MTK_AFE_BASE, that default/unset register addresses are stored
+ * as -1 and not NULL.
  */
 static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *dst)
 {
-
-	dst->id = src->dai_id;
-	dst->name = src->afe_name; /* Assumes it's a string literal! */
-	dst->reg_ofs_base = src->base.lo;
-	dst->reg_ofs_cur = src->cur.lo;
-	dst->reg_ofs_end = src->end.lo;
-	dst->reg_ofs_base_msb = src->base.hi;
-	dst->reg_ofs_cur_msb = src->cur.hi;
-	dst->reg_ofs_end_msb = src->end.hi;
-	dst->mono_invert = src->mono_invert;
-
-	/* Some preprocessor trickery to help mapping the regularized
-	 * DTS data to the "almost but not quite
-	 * convention-conforming" original naming.  Mostly just some
-	 * naming quirks.  The only semantic differences are that the
-	 * register addresses in DTS become offsets from MTK_AFE_BASE,
-	 * that default/unset register addresses are stored as -1 and
-	 * not NULL.
-	 */
-#define REGCVT(R) ((R) ? (R) - MTK_AFE_BASE : -1)
+#define REGCVT(R) (((R) > 0) ? ((R) - MTK_AFE_BASE) : -1)
 
 #define COPYBIT(S, Dr, Ds) do {		\
 	dst->Dr = REGCVT(src->S.reg);	\
@@ -285,19 +273,25 @@ static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *d
 #define COPY2(F) COPYBIT(F, F##_reg, F##_shift)
 #define COPY3(F) COPYFLD(F, F##_reg, F##_shift, F##_mask)
 
+	dst->name = src->afe_name; /* Assumes it's a string literal! */
+	dst->reg_ofs_base = REGCVT(src->base.lo);
+	dst->reg_ofs_cur = REGCVT(src->cur.lo);
+	dst->reg_ofs_end = REGCVT(src->end.lo);
+	dst->reg_ofs_base_msb = REGCVT(src->base.hi);
+	dst->reg_ofs_cur_msb = REGCVT(src->cur.hi);
+	dst->reg_ofs_end_msb = REGCVT(src->end.hi);
+	dst->mono_invert = src->mono_invert;
+
 	COPYFLD(fs, fs_reg, fs_shift, fs_maskbit);
 	COPY2(mono);
 	COPY3(quad_ch);
 	COPYBIT(int_odd, int_odd_flag_reg, int_odd_flag_shift);
 	COPY2(enable);
 	COPY2(hd);
-	//COPYBIT(hd_align, hd_align_reg, hd_align_mshift);
 	COPY2(msb);
 	COPY2(msb2);
 	COPY2(agent_disable);
 	COPYFLD(ch_num, ch_num_reg, ch_num_shift, ch_num_maskbit);
-	//COPY3(pbuf);
-	//COPY3(minlen);
 
 #undef REGCVT
 #undef COPYBIT
@@ -313,7 +307,7 @@ static void cfg_convert(const struct afe_cfg *src, struct mtk_base_memif_data *d
  */
 static void cfg_cmp(const struct mtk_base_memif_data *a, struct mtk_base_memif_data *b)
 {
-#define CHK(F) if(a->F != b->F) printk(" !!%s: 0x%x != 0x%x\n", #F, a->F, b->F)
+#define CHK(F) if(a->F != b->F) printk(" !!%s: want 0x%x got 0x%x\n", #F, a->F, b->F)
 	CHK(id);
 	CHK(reg_ofs_base);
 	CHK(reg_ofs_cur);
@@ -336,8 +330,6 @@ static void cfg_cmp(const struct mtk_base_memif_data *a, struct mtk_base_memif_d
 	CHK(enable_shift);
 	CHK(hd_reg);
 	CHK(hd_shift);
-	CHK(hd_align_reg);
-	CHK(hd_align_mshift);
 	CHK(msb_reg);
 	CHK(msb_shift);
 	CHK(msb2_reg);
@@ -347,12 +339,15 @@ static void cfg_cmp(const struct mtk_base_memif_data *a, struct mtk_base_memif_d
 	CHK(ch_num_reg);
 	CHK(ch_num_shift);
 	CHK(ch_num_maskbit);
-	CHK(pbuf_reg);
-	CHK(pbuf_mask);
-	CHK(pbuf_shift);
-	CHK(minlen_reg);
-	CHK(minlen_mask);
-	CHK(minlen_shift);
+	// These fields are unused in the current driver, can't test dead code
+	//CHK(hd_align_reg);
+	//CHK(hd_align_mshift);
+	//CHK(pbuf_reg);
+	//CHK(pbuf_mask);
+	//CHK(pbuf_shift);
+	//CHK(minlen_reg);
+	//CHK(minlen_mask);
+	//CHK(minlen_shift);
 }
 
 /* Some properties may be skipped/defaulted in DTS */
@@ -383,6 +378,13 @@ static const struct afe_cfg afes[] = {
 	DT_FOREACH_STATUS_OKAY(mediatek_afe, GENAFE)
 };
 
+// Create an uninitialized array of memif structs to be initialized
+// from the data in afes[]
+#define EMPTY_STRUCT(n) {},
+static struct mtk_base_memif_data afe_memifs[] = {
+	DT_FOREACH_STATUS_OKAY(mediatek_afe, EMPTY_STRUCT)
+};
+
 static void afe_check(void)
 {
 	int n = ARRAY_SIZE(mtk_memif_data);
@@ -390,10 +392,8 @@ static void afe_check(void)
 	__ASSERT_NO_MSG(ARRAY_SIZE(afes) == n);
 
 	for (int i = 0; i < n; i++) {
-		struct mtk_base_memif_data tmp;
-
-		cfg_convert(&afes[i], &tmp);
-		cfg_cmp(&mtk_memif_data[i], &tmp);
+		printk("\nCheck AFE %d:\n", i);
+		cfg_cmp(&mtk_memif_data[i], &afe_memifs[i]);
 	}
 }
 
@@ -485,7 +485,7 @@ static unsigned int mtk_afe_fs(unsigned int rate, int aud_blk)
 /* Global symbol referenced by AFE driver */
 struct mtk_base_afe_platform mtk_afe_platform = {
 	.base_addr = MTK_AFE_BASE,
-	.memif_datas = mtk_memif_data,
+	//.memif_datas = mtk_memif_data, // FIXME
 	.memif_size = ARRAY_SIZE(mtk_memif_data),
 	.memif_dl_num = MTK_DL_NUM,
 	.memif_32bit_supported = 0,
@@ -498,7 +498,19 @@ struct mtk_base_afe_platform mtk_afe_platform = {
 
 int mtk_dai_init(struct sof *sof)
 {
-	printk("ANDY %s:%d\n", __func__, __LINE__);
+	/* Note: assumes that the order of entries in DTS matches the
+	 * legacy mtk_dais[] array defined above.  We should construct
+	 * the former from DTS too.
+	 */
+	for (int i = 0; i < ARRAY_SIZE(afes); i++) {
+		afe_memifs[i].id = i;
+		cfg_convert(&afes[i], &afe_memifs[i]);
+	}
+
+	mtk_afe_platform.memif_datas = afe_memifs;
+
+	afe_check();
+
         sof->dai_info = &mtk_dai_info;
 	sof->dma_info = &mtk_dma_info;
         return 0;
