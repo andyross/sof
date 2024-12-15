@@ -1,26 +1,10 @@
-config DCACHE_LINE_SIZE
-	default 128
-
-config CPU_HAS_DCACHE
-	default y
-
-config DCACHE
-	default y
-
-config CACHE_MANAGEMENT
-	default y
-
-config XTENSA_CCOUNT_HZ
-	default 800000000
-
-# Assume =y with Zephyr builds
+# FIXME: remove this setting from all the other Zephyr defconfigs
 config ZEPHYR_LOG
 	default y
 
-# Used to be selected by the platform, find a home
+# FIXME: move these two to a "config MTK" platform selection
 config SCHEDULE_DMA_MULTI_CHANNEL
 	default y if SOC_FAMILY_MTK
-
 config HOST_PTABLE
 	default y if SOC_FAMILY_MTK
 
