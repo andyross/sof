@@ -15,6 +15,10 @@
 #include <sof_versions.h>
 #include <sof/ipc/schedule.h>
 
+/* General platform glue code.  In a Zephyr build, most of this is
+ * vestigial or degenerate, or at least evolving in that direction.
+ */
+
 void mtk_dai_init(struct sof *sof);
 
 #define MBOX0 DEVICE_DT_GET(DT_INST(0, mediatek_mbox))
@@ -93,7 +97,9 @@ static void mbox_reply_fn(const struct device *mbox, void *arg)
 	ipc_get()->is_notification_pending = false;
 }
 
-/* "Host Page Table" support.  This isn't really a page table, it's a
+/* "Host Page Table" support.  The platform is responsible for
+ * providing a buffer into which the IPC layer reads a DMA "page
+ * table" from the host.  This isn't really a page table, it's a
  * packed array of PPN addresses (basically a scatter/gather list)
  * used to configure the buffer used for dummy_dma, which is a "DMA"
  * driver that works by directly copying data in shared memory.  And
@@ -104,7 +110,7 @@ static void mbox_reply_fn(const struct device *mbox, void *arg)
  * dedicated for the purpose and are AFAICT guaranteed contiguous.
  *
  * Note: the 256 byte page table size is fixed by protocol in the
- * kernel driver, but here in SOF it's always been a platform symbol.
+ * linux driver, but here in SOF it's always been a platform symbol.
  * But it's not tunable!  Don't touch it.
  */
 static uint8_t hostbuf_ptable[256];
