@@ -2,13 +2,6 @@
 #include <ipc/dai.h>
 #include <sof/drivers/afe-drv.h>
 
-#define DAI_HANDSHAKE(dai, irq, chan) ((chan << 16) | (irq << 8) | dai)
-
-#define DAI_DEFINE(dai, irq, chan)		\
-	{ .index = dai, .drv = &afe_dai_driver,	\
-	  .plat_data = { .fifo = {		\
-		{ .handshake = DAI_HANDSHAKE(dai, irq, chan), } } } }
-
 extern const struct dai_driver afe_dai_driver;
 
 ////////////////////////////////////////////////////////////////////////
@@ -16,6 +9,13 @@ extern const struct dai_driver afe_dai_driver;
 //
 // MONSTER 7MB HEADER, MUST FIX
 #include "../../mt8196/include/platform/mt8196-afe-reg.h"
+
+#define DAI_HANDSHAKE(dai, irq, chan) ((chan << 16) | (irq << 8) | dai)
+
+#define DAI_DEFINE(dai, irq, chan)		\
+	{ .index = dai, .drv = &afe_dai_driver,	\
+	  .plat_data = { .fifo = {		\
+		{ .handshake = DAI_HANDSHAKE(dai, irq, chan), } } } }
 
 // Note that there are two sets of enumerants, and the order is
 // mismatched! (DL1 and DL_24CH are swapped).  The DAI numbering is
@@ -44,12 +44,12 @@ enum {
 
 // Note: the IRQ's used are always equal to their enumerants, not sure
 // if that's guaranteed.  Maybe academic as no interrupts currently
-static struct dai mtk_dais[] = {
-        DAI_DEFINE(MT8196_DAI_I2S_OUT4,     12, MT8196_MEMIF_DL_24CH),
-        DAI_DEFINE(MT8196_DAI_I2S_OUT6,      1, MT8196_MEMIF_DL1),
-        DAI_DEFINE(MT8196_DAI_AP_DMIC,      13, MT8196_MEMIF_UL0),
+static struct dai mtk_dais_0[] = {
+        DAI_DEFINE(MT8196_DAI_I2S_OUT4,      0, MT8196_MEMIF_DL_24CH),
+        DAI_DEFINE(MT8196_DAI_I2S_OUT6,      0, MT8196_MEMIF_DL1),
+        DAI_DEFINE(MT8196_DAI_AP_DMIC,       0, MT8196_MEMIF_UL0),
         DAI_DEFINE(MT8196_DAI_I2S_IN6,       0, MT8196_MEMIF_UL1),
-        DAI_DEFINE(MT8196_DAI_AP_DMIC_CH34, 15, MT8196_MEMIF_UL2),
+        DAI_DEFINE(MT8196_DAI_AP_DMIC_CH34,  0, MT8196_MEMIF_UL2),
 };
 
 static const struct mtk_base_memif_data mtk_memif_data[] = {
@@ -203,9 +203,9 @@ static const struct mtk_base_memif_data mtk_memif_data[] = {
 		.msb_shift = -1,
 	},
 };
+#define MTK_DL_NUM 2
 
 #define MTK_AFE_BASE 0x1a110000
-#define MTK_DL_NUM 2
 
 ////////////////////////////////////////////////////////////////////////
 // Alternate Devicetree-based DAI/AFE config mechanism.  Maintain in
@@ -243,6 +243,8 @@ struct afe_cfg {
 	struct afe_bitfld agent_disable;
 	struct afe_bitfld ch_num;
 };
+
+#define MTK_AFE_BASE 0x1a110000
 
 /* Converts the DTS_derived afe_cfg struct to a runtime memif_data for
  * use by the legacy driver.  This is temporary, pending a
@@ -385,6 +387,10 @@ static struct mtk_base_memif_data afe_memifs[] = {
 	DT_FOREACH_STATUS_OKAY(mediatek_afe, EMPTY_STRUCT)
 };
 
+static struct dai mtk_dais[] = {
+	DT_FOREACH_STATUS_OKAY(mediatek_afe, EMPTY_STRUCT)
+};
+
 static void afe_check(void)
 {
 	int n = ARRAY_SIZE(mtk_memif_data);
@@ -485,7 +491,7 @@ static unsigned int mtk_afe_fs(unsigned int rate, int aud_blk)
 /* Global symbol referenced by AFE driver */
 struct mtk_base_afe_platform mtk_afe_platform = {
 	.base_addr = MTK_AFE_BASE,
-	//.memif_datas = mtk_memif_data, // FIXME
+	.memif_datas = mtk_memif_data,
 	.memif_size = ARRAY_SIZE(mtk_memif_data),
 	.memif_dl_num = MTK_DL_NUM,
 	.memif_32bit_supported = 0,
@@ -498,18 +504,58 @@ struct mtk_base_afe_platform mtk_afe_platform = {
 
 int mtk_dai_init(struct sof *sof)
 {
+	int i;
+
 	/* Note: assumes that the order of entries in DTS matches the
 	 * legacy mtk_dais[] array defined above.  We should construct
 	 * the former from DTS too.
 	 */
-	for (int i = 0; i < ARRAY_SIZE(afes); i++) {
+	for (i = 0; i < ARRAY_SIZE(afes); i++) {
 		afe_memifs[i].id = i;
 		cfg_convert(&afes[i], &afe_memifs[i]);
+
+		/* Also initialize the dais array */
+		mtk_dais[i].index = i;
+		mtk_dais[i].drv = &afe_dai_driver;
+
+		/* Also construct the mtk_dais[] array, which is the
+		 * mapping from the host-visible DAI index to a driver
+		 * defined in afe_memifs[].  The mapping is ad-hoc,
+		 * and stored, bitpacked, in the "handshake" variable
+		 * in plat data.  The DAI index is the low byte, the
+		 * AFE index is in the third byte.  There is an IRQ
+		 * traditionally defined in the middle byte but unused
+		 * here because the driver doesn't support
+		 * interrupts.
+		 */
+		int di = afes[i].dai_id;
+		int hs = (i << 16) | di;
+
+		mtk_dais[di].plat_data.fifo[0].handshake = hs;
 	}
 
+	/* The legacy driver wants all the DL devices at the start of
+	 * the array, validate and compute dl_num.
+	 */
+	int num_dl = 0;
+	for (i = 0; i < ARRAY_SIZE(afes); i++) {
+		if (!afes[i].downlink) {
+			num_dl = i;
+			break;
+		}
+	}
+	for (/**/; i < ARRAY_SIZE(afes); i++) {
+		__ASSERT_NO_MSG(!afes[i].downlink);
+	}
+
+	printk("ANDY afe dl_num %d\n", num_dl);
+	mtk_afe_platform.memif_dl_num = num_dl;
 	mtk_afe_platform.memif_datas = afe_memifs;
 
 	afe_check();
+	for (int i = 0; i < ARRAY_SIZE(mtk_dais); i++)
+		printk("ANDY dai %d handshake 0x%8.8x\n", i,
+		       mtk_dais[i].plat_data.fifo[0].handshake);
 
         sof->dai_info = &mtk_dai_info;
 	sof->dma_info = &mtk_dma_info;
