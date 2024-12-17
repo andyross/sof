@@ -102,6 +102,11 @@ extra_platform_configs = {
 		"ace30_LX7HiFi4_PIF",
 		ipc4 = True
 	),
+	"mt8196" : PlatformConfig(
+		"mtk", "mt8196/mt8196/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"HiFi5_MPU_lock_2023_11",
+	),
 }
 
 # These can all be built out of the box. --all builds all these.
@@ -1153,7 +1158,7 @@ RI_INFO_UNSUPPORTED = []
 
 RI_INFO_UNSUPPORTED += ['imx8', 'imx8x', 'imx8m', 'imx8ulp']
 RI_INFO_UNSUPPORTED += ['rn']
-RI_INFO_UNSUPPORTED += ['mt8186', 'mt8195']
+RI_INFO_UNSUPPORTED += ['mt8186', 'mt8188', 'mt8195', 'mt8196']
 
 # For temporary workarounds. Unlike _UNSUPPORTED above, the platforms below will print a warning.
 RI_INFO_FIXME = [ ]

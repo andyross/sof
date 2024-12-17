@@ -1,0 +1,31 @@
+# FIXME: remove this setting from all the other Zephyr defconfigs
+config ZEPHYR_LOG
+	default y
+
+# FIXME: move these two to a "config MTK" platform selection
+config SCHEDULE_DMA_MULTI_CHANNEL
+	default y if SOC_FAMILY_MTK
+config HOST_PTABLE
+	default y if SOC_FAMILY_MTK
+
+# SOF code assumes system work queue and other system
+# wide threads are pinned to a single core.
+# CPU_MASK_PIN_ONLY must be set for all SOF builds.
+config SCHED_CPU_MASK_PIN_ONLY
+	default y if SMP
+
+config SMP_BOOT_DELAY
+	default y if SMP
+
+# Zephyr platforms don't use legacy tracing
+config TRACE
+	default n
+
+# FIXME: figure this out, "host page table", MTK/NXP both need it, old
+# old flag (see commit fb784218b500).  But I **think** MTK doesn't
+# care about host addresses?  Might be just cut/paste
+config HOST_PTABLE
+	default y if CONFIG_SOC_FAMILY_MTK
+
+source "Kconfig.zephyr"
+
