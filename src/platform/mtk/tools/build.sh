@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2024 Google LLC.  All rights reserved.
+# Author: Andy Ross <andyross@google.com>
 set -ex
 
 PLATFORMS="$*"

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright(c) 2024 Google LLC.  All rights reserved.
+// Author: Andy Ross <andyross@google.com>
 #include <sof/lib/dai-legacy.h>
 #include <ipc/dai.h>
 #include <sof/drivers/afe-drv.h>

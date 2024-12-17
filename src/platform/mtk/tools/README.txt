@@ -1,4 +1,3 @@
-
 MTK AFE Generator tool
 ======================
 
