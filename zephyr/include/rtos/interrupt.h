@@ -49,15 +49,15 @@ static inline void interrupt_unregister(uint32_t irq, const void *arg)
 
 static inline int interrupt_get_irq(unsigned int irq, const char *cascade)
 {
-#if defined(CONFIG_LIBRARY) || defined(__ZEPHYR__) || defined(CONFIG_ARM64)
-	return irq;
-#else
+#ifdef CONFIG_IMX8M
 	if (cascade == irq_name_level2)
 		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL2);
 	if (cascade == irq_name_level5)
 		return SOC_AGGREGATE_IRQ(irq, IRQ_NUM_EXT_LEVEL5);
 
 	return SOC_AGGREGATE_IRQ(0, irq);
+#else
+	return irq;
 #endif
 }
 
