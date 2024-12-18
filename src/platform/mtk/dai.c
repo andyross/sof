@@ -10,7 +10,13 @@
  * AFE-related registers), where DTS naturally wants to provide full
  * addresses.  We store the base here, pending a Zephyrized driver.
  */
-#ifdef CONFIG_SOC_MT8196
+#if defined(CONFIG_SOC_MT8186)
+#define MTK_AFE_BASE 0x11210000
+#elif defined(CONFIG_SOC_SERIES_MT818X)
+#define MTK_AFE_BASE 0x10b10000
+#elif defined(CONFIG_SOC_MT8195)
+#define MTK_AFE_BASE 0x10890000
+#elif defined( CONFIG_SOC_MT8196)
 #define MTK_AFE_BASE 0x1a110000
 #else
 #error Unrecognized device

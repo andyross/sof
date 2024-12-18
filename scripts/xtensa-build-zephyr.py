@@ -103,17 +103,34 @@ extra_platform_configs = {
 		"ace30_LX7HiFi4_PIF",
 		ipc4 = True
 	),
-	"mt8196" : PlatformConfig(
-		"mtk", "mt8196/mt8196/adsp",
-		f"RJ-2024.3{xtensa_tools_version_postfix}",
-		"HiFi5_MPU_lock_2023_11",
-	),
 	# AMD platforms
 	"acp_6_0" : PlatformConfig(
 		"amd", "acp_6_0_adsp/acp_6_0",
 		f"RI-2019.1{xtensa_tools_version_postfix}",
 		"rmb_LX7_HiFi5_PROD",
 		RIMAGE_KEY = "key param ignored by acp_6_0"
+	),
+	# MediaTek platforms
+	# (move to platform_configs_all on next Zephyr SDK release after 0.17.0)
+	"mt8195" : PlatformConfig(
+		"mtk", "mt8195/mt8195/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"hifi4_8195_PROD",
+	),
+	"mt8186" : PlatformConfig(
+		"mtk", "mt8186/mt8186/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"hifi5_7stg_I64D128",
+	),
+	"mt8188" : PlatformConfig(
+		"mtk", "mt8188/mt8188/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"hifi5_7stg_I64D128",
+	),
+	"mt8196" : PlatformConfig(
+		"mtk", "mt8196/mt8196/adsp",
+		f"RJ-2024.3{xtensa_tools_version_postfix}",
+		"HiFi5_MPU_lock_2023_11",
 	),
 }
 
