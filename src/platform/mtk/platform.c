@@ -35,7 +35,7 @@ void mtk_dai_init(struct sof *sof);
  * the new style is a cleaner scheme, but doing this without a
  * protocol rev?  Come on!
  */
-#ifdef CONFIG_SOC_MT8196
+#ifndef CONFIG_SOC_MT8195
 #define MBOX_CMD_TO_HOST MBOX1
 #define MBOX_RPL_TO_DSP MBOX1
 #define MBOX_CMD_TO_DSP MBOX0
