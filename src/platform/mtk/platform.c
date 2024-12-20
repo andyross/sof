@@ -27,26 +27,6 @@ void mtk_dai_init(struct sof *sof);
 #define MBOX0 DEVICE_DT_GET(DT_INST(0, mediatek_mbox))
 #define MBOX1 DEVICE_DT_GET(DT_INST(1, mediatek_mbox))
 
-/* This is silly: the kernel mt8196 driver changes the protocol to
- * swap the device used for replies.  It used to be that mbox0 was
- * used to send commands in both directions and mbox1 to send the
- * replies.  Now mbox0 is for commands to and replies from the host,
- * and mbox1 for commands from the host and replies from us.  Arguably
- * the new style is a cleaner scheme, but doing this without a
- * protocol rev?  Come on!
- */
-#ifndef CONFIG_SOC_MT8195
-#define MBOX_CMD_TO_HOST MBOX1
-#define MBOX_RPL_TO_DSP MBOX1
-#define MBOX_CMD_TO_DSP MBOX0
-#define MBOX_RPL_TO_HOST MBOX0
-#else
-#define MBOX_CMD_TO_HOST MBOX0
-#define MBOX_RPL_TO_DSP MBOX1
-#define MBOX_CMD_TO_DSP MBOX0
-#define MBOX_RPL_TO_HOST MBOX1
-#endif
-
 /* Use the same UUID as in "ipc-zephyr.c", which is actually an Intel driver */
 SOF_DEFINE_REG_UUID(zipc_task);
 
@@ -74,13 +54,13 @@ enum task_state ipc_platform_do_cmd(struct ipc *ipc)
 
 void ipc_platform_complete_cmd(struct ipc *ipc)
 {
-	mtk_adsp_mbox_signal(MBOX_RPL_TO_HOST, 1);
+	mtk_adsp_mbox_signal(MBOX0, 1);
 }
 
 static void mtk_ipc_send(const void *msg, size_t sz)
 {
 	mailbox_dspbox_write(0, msg, sz);
-	mtk_adsp_mbox_signal(MBOX_CMD_TO_HOST, 0);
+	mtk_adsp_mbox_signal(MBOX1, 0);
 }
 
 int ipc_platform_send_msg(const struct ipc_msg *msg)
@@ -134,8 +114,8 @@ int platform_ipc_init(struct ipc *ipc)
 	schedule_task_init_edf(&ipc->ipc_task, SOF_UUID(zipc_task_uuid),
 			       &ipc_task_ops, ipc, 0, 0);
 
-	mtk_adsp_mbox_set_handler(MBOX_CMD_TO_DSP, 0, mbox_cmd_fn, NULL);
-	mtk_adsp_mbox_set_handler(MBOX_RPL_TO_DSP, 1, mbox_reply_fn, NULL);
+	mtk_adsp_mbox_set_handler(MBOX0, 0, mbox_cmd_fn, NULL);
+	mtk_adsp_mbox_set_handler(MBOX1, 1, mbox_reply_fn, NULL);
 	return 0;
 }
 
